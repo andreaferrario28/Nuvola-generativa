@@ -1,0 +1,169 @@
+    /* ==========================================================================
+       FONT LOCALI (CARTELLA /Assets/fonts/ PER GITHUB PAGES)
+       ========================================================================== */
+    @font-face {
+      font-family: 'Eiffel';
+      src: url('../Assets/fonts/BVHEiffelTrial-Regular.otf') format('opentype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'Eiffel';
+      src: url('../Assets/fonts/BVHEiffelTrial-Bold.otf') format('opentype');
+      font-weight: 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    :root {
+      --bg-paper: #F1F1EF;
+      --bg-panel: #F8F8F6;
+      --bg-card: #FFFFFF;
+      --border: #D6D6D2;
+      --border-strong: #161616;
+      --ink: #161616;
+      --muted: #666662;
+      --accent: #FF5D38;
+      --font-display: 'Eiffel', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-paper);
+      color: var(--ink);
+      font-family: var(--font-display);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .font-mono-tech {
+      font-family: var(--font-mono);
+    }
+
+    .font-display-eiffel {
+      font-family: var(--font-display);
+    }
+
+    /* Technical Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg-paper);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #C4C4BE;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #9B9B94;
+    }
+
+    /* Custom Technical Range Sliders */
+    input[type="range"].tech-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 4px;
+      background: #D6D6D2;
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"].tech-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 12px;
+      height: 12px;
+      background: #161616;
+      border: 1.5px solid #FFFFFF;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: transform 0.12s ease, background-color 0.12s ease;
+    }
+    input[type="range"].tech-slider::-webkit-slider-thumb:hover {
+      background: var(--accent);
+      transform: scale(1.15);
+    }
+    input[type="range"].tech-slider::-moz-range-thumb {
+      width: 12px;
+      height: 12px;
+      background: #161616;
+      border: 1.5px solid #FFFFFF;
+      border-radius: 2px;
+      cursor: pointer;
+    }
+
+    /* Checkerboard for Transparent Sheet Preview */
+    .checkerboard-bg {
+      background-color: #FFFFFF;
+      background-image:
+        linear-gradient(45deg, #E2E2DE 25%, transparent 25%),
+        linear-gradient(-45deg, #E2E2DE 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #E2E2DE 75%),
+        linear-gradient(-45deg, transparent 75%, #E2E2DE 75%);
+      background-size: 16px 16px;
+      background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+    }
+
+    /* Subtle Drafting Grid on Workspace */
+    .drafting-workspace {
+      background-color: #E7E7E3;
+      background-image:
+        radial-gradient(#C8C8C2 1px, transparent 1px);
+      background-size: 20px 20px;
+    }
+
+    /* Custom Toggle Switch */
+    .toggle-pill {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      width: 32px;
+      height: 18px;
+      background: #D6D6D2;
+      border-radius: 999px;
+      transition: background 0.18s ease;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .toggle-pill::after {
+      content: '';
+      position: absolute;
+      left: 2px;
+      width: 14px;
+      height: 14px;
+      background: #FFFFFF;
+      border-radius: 50%;
+      transition: transform 0.18s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    input:checked + .toggle-pill {
+      background: #161616;
+    }
+    input:checked + .toggle-pill::after {
+      transform: translateX(14px);
+    }
+
+    /* Recording pulse */
+    @keyframes recPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.25; }
+    }
+    .rec-dot {
+      animation: recPulse 1s infinite;
+    }
+
+    /* Canvas Wrapper Aspect & Shadow */
+    .sheet-frame {
+      box-shadow: 0 16px 40px -12px rgba(22, 22, 22, 0.16), 0 0 0 1px rgba(22, 22, 22, 0.12);
+      transition: width 0.2s ease, height 0.2s ease;
+    }
