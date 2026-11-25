@@ -104,7 +104,7 @@
         </div>
         <div class="flex items-center gap-2">
           <button type="button" id="brushToggle" aria-pressed="false" aria-controls="brushControls" class="px-2 py-1 rounded border border-[#D6D6D2] bg-white text-[#161616] aria-pressed:bg-[#161616] aria-pressed:text-white cursor-pointer">Pennello</button>
-          <span id="epicenterHint" class="text-[10px] text-[#666662] hidden sm:inline">Clicca sul foglio per spostare l'epicentro</span>
+          <span id="epicenterHint" class="text-[10px] text-[#666662] hidden sm:inline"></span>
           <span id="recordingBadge" class="hidden items-center gap-1.5 px-2 py-0.5 rounded bg-[#FF5D38] text-white font-semibold text-[10px]">
             <span class="w-2 h-2 rounded-full bg-white rec-dot"></span>
             REC WEBM...
@@ -231,8 +231,8 @@
               <span class="w-full h-5 rounded-sm border border-[#D6D6D2] bg-[#FFFFFF]"></span>
               <span class="font-mono-tech text-[9px] uppercase">Bianco</span>
             </button>
-            <button data-bg="dark" class="bg-btn flex flex-col items-center gap-1 p-1.5 rounded border border-[#D6D6D2] bg-white hover:border-[#161616] cursor-pointer" title="Mappa Scura #0E0E10">
-              <span class="w-full h-5 rounded-sm border border-[#161616] bg-[#0E0E10]"></span>
+            <button data-bg="dark" class="bg-btn flex flex-col items-center gap-1 p-1.5 rounded border border-[#D6D6D2] bg-white hover:border-[#161616] cursor-pointer" title="Mappa Scura #555555">
+              <span class="w-full h-5 rounded-sm border border-[#161616] bg-[#555555]"></span>
               <span class="font-mono-tech text-[9px] uppercase">Scura</span>
             </button>
             <button data-bg="transparent" class="bg-btn flex flex-col items-center gap-1 p-1.5 rounded border border-[#D6D6D2] bg-white hover:border-[#161616] cursor-pointer" title="Sfondo Trasparente">
@@ -246,14 +246,14 @@
         <section class="pt-4 border-t border-[#D6D6D2]">
           <label for="zoneModeSelect" class="block font-mono-tech text-[10px] font-semibold uppercase tracking-wider text-[#666662] mb-2">Modalità Zona Composizione</label>
           <select id="zoneModeSelect" class="w-full bg-white border border-[#D6D6D2] rounded px-2.5 py-2 text-xs font-mono-tech text-[#161616] focus:outline-none focus:border-[#161616]">
-            <option value="free">Libera (Full Sheet)</option>
-            <option value="epicenter" selected>Epicentro (Data Center)</option>
+            <option value="free" selected>Libera (Tutto il foglio)</option>
+            <option value="epicenter">Epicentro (Data Center)</option>
             <option value="frame">Cornice (Spazio Testo)</option>
             <option value="diagonal">Diagonale / Flusso</option>
             <option value="poster">Poster</option>
           </select>
           <p id="zoneModeDesc" class="mt-1.5 text-[11px] text-[#666662] leading-snug">
-            Ancora pennacchi, calore e onde attorno all'epicentro (clicca sul foglio per spostarlo).
+            Ogni effetto parte da una zona scelta dal seed. La composizione si estende fino ai margini.
           </p>
           <button type="button" id="btnPosterPreset" class="mt-2 w-full px-2.5 py-2 rounded border border-[#D6D6D2] bg-white text-left text-xs font-mono-tech text-[#161616] hover:border-[#161616] cursor-pointer">Applica composizione di riferimento</button>
         </section>

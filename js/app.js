@@ -34,12 +34,12 @@
           name: 'Valore immobiliare',
           category: 'economia',
           color: '#3371E2',
-          shape: 'diamond',
+          shape: 'house-fill',
           defaultLogic: 'property-grid',
           fixedLogic: true,
           active: true,
           intensity: 62,
-          iconSvg: '<polygon points="8,2 14,8 8,14 2,8" fill="#3371E2"/><circle cx="8" cy="8" r="1.3" fill="#16439C"/>'
+          iconSvg: '<path d="M2 3h6v2h6v7h-4v2H2z" fill="#3371E2"/>'
         },
         {
           id: 'posti-di-lavoro',
@@ -173,12 +173,12 @@
           id: 'rumore',
           name: 'Rumore',
           category: 'salute',
-          color: '#161616',
+          color: '#9E1D6C',
           defaultLogic: 'diagonal-bands',
           fixedLogic: true,
           active: false,
           intensity: 62,
-          iconSvg: '<path d="M1 8L11 2M2 12L14 5M5 14L15 8" stroke="#161616"/><path d="M4 11L10 7M8 13L15 8.8" stroke="#161616" stroke-width="2.4"/>'
+          iconSvg: '<path d="M1 8L11 2M2 12L14 5M5 14L15 8" stroke="#9E1D6C"/><path d="M4 11L10 7M8 13L15 8.8" stroke="#9E1D6C" stroke-width="2.4"/>'
         }
       ];
 
@@ -222,12 +222,12 @@
       const BACKGROUNDS = {
         paper:       { hex: '#EDEEE9', ink: '#555555', subInk: '#555555' },
         white:       { hex: '#FFFFFF', ink: '#161616', subInk: '#555550' },
-        dark:        { hex: '#0E0E10', ink: '#F1F1EF', subInk: '#A0A09A' },
+        dark:        { hex: '#555555', ink: '#EDEEE9', subInk: '#EDEEE9' },
         transparent: { hex: null,      ink: '#161616', subInk: '#555550' }
       };
 
       const ZONE_DESCRIPTIONS = {
-        free:      'Diffusione libera su tutta la superficie del foglio secondo le logiche di ciascun parametro.',
+        free:      'Ogni effetto parte da una zona scelta dal seed. La composizione si estende fino ai margini.',
         epicenter: 'Ancora pennacchi, calore e onde attorno all\'epicentro (clicca sul foglio per spostarlo).',
         frame:     'Mantiene libera un\'area centrale pulita per ospitare titoli, testi o elementi grafici.',
         diagonal:  'Concentra le micro-geometrie lungo un asse dinamico diagonale attraverso il foglio.',
@@ -236,9 +236,8 @@
 
       const LOGO_PATHS = CLOUD_EDITION_LOGO.paths.map(path => new Path2D(path));
       const HALFTONE_RADIUS_RATIO = 0.52;
-      const DIAMOND_RADIUS_RATIO = 0.55;
-      const DIAMOND_DOT_COLOR = '#16439C';
-      const DIAMOND_DOT_RADIUS_RATIO = 0.12;
+      const TITLE_FONT = 'Eiffel, Inter, sans-serif';
+      const SUBTITLE_FONT = 'IBM Plex Mono, monospace';
       const DEFAULT_DISTRIBUTION = 50;
       const HOUSE_LAYER_ID = 'pressione-rete';
       const SAFE_FRAME = { left: 0.22, right: 0.78, top: 0.25, bottom: 0.75 };
@@ -251,7 +250,7 @@
         seed: 48291,
         format: 'a4',
         background: 'paper',
-        zoneMode: 'epicenter',
+        zoneMode: 'free',
         epicenter: { x: 0.46, y: 0.48 }, // normalized 0..1
         globalScale: 1.0,
         typography: {
@@ -338,7 +337,8 @@
       }
 
       function passesZoneFilter(nx, ny, rng, allowSoft = true) {
-        if (nx < 0.02 || nx > 0.98 || ny < 0.02 || ny > 0.98) return false;
+        const margin = state.zoneMode === 'free' ? 0 : 0.02;
+        if (nx < margin || nx > 1 - margin || ny < margin || ny > 1 - margin) return false;
         if (state.zoneMode === 'frame') {
           if (isInsideSafeFrame(nx, ny)) return false;
         } else if (state.zoneMode === 'diagonal') {
@@ -346,6 +346,16 @@
           if (allowSoft ? rng() > (w * 0.95 + 0.08) : w < 0.32) return false;
         }
         return true;
+      }
+
+      function getFreeAnchor(effectIndex) {
+        // Strati sfalsati e ripetibili coprono zone diverse anche con lo stesso seed.
+        const offset = Math.floor(hash2D(12, 91, state.seed) * 12);
+        const zone = (effectIndex * 5 + offset) % 12;
+        return {
+          x: (zone % 3 + 0.10 + hash2D(effectIndex, 53, state.seed) * 0.80) / 3,
+          y: (Math.floor(zone / 3) + 0.10 + hash2D(effectIndex, 79, state.seed) * 0.80) / 4
+        };
       }
 
       function getFocalPoint(rng, offsetSpread = 0.14) {
@@ -423,17 +433,7 @@
         };
       }
 
-      function isInsideLogo(x, y, logo) {
-        if (!logo) return false;
-        const u = (x - logo.x) / logo.width;
-        const v = (y - logo.y) / logo.height;
-        return (v > -0.025 && v < 0.37 && u > 0.13 && u < 0.60) ||
-          (v >= 0.24 && v < 0.69 && u > 0.005 && u < 0.90) ||
-          (v >= 0.65 && v < 1.015 && u > 0.45 && u < 0.99);
-      }
-
-      function getClusterCenters(rng, count, spread) {
-        const focal = getFocalPoint(rng, 0.12);
+      function getClusterCenters(rng, count, spread, focal) {
         const phase = rng() * Math.PI * 2;
         return Array.from({ length: count }, (_, i) => {
           const angle = phase + i * Math.PI * 2 / count;
@@ -449,6 +449,12 @@
           if (state.zoneMode === 'diagonal') {
             const x = 0.15 + i * 0.70 / (count - 1) + jitter;
             return { x, y: 1 - x + Math.sin(angle) * 0.09 };
+          }
+          if (state.zoneMode === 'free') {
+            // Il bordo riflette le posizioni eccedenti senza accumularle sulla stessa riga.
+            const reflect = value => value < 0.018 ? 0.036 - value : value > 0.982 ? 1.964 - value : value;
+            const distance = (spread + jitter) * 1.42;
+            return { x: reflect(focal.x + Math.cos(angle) * distance), y: reflect(focal.y + Math.sin(angle) * distance) };
           }
           return {
             x: clamp(focal.x, 0.34, 0.66) + Math.cos(angle) * (spread + jitter),
@@ -477,8 +483,13 @@
         const baseUnit = (minDim / 90) * state.globalScale;
         const logic = effect.logic;
         const color = effect.color;
+        const free = state.zoneMode === 'free';
+        const freeAnchor = free ? getFreeAnchor(effectIndex) : null;
+        const focalPoint = (spread = 0.14) => free ? {
+          x: clamp(freeAnchor.x + (rng() - 0.5) * spread, 0.018, 0.982),
+          y: clamp(freeAnchor.y + (rng() - 0.5) * spread, 0.018, 0.982)
+        } : getFocalPoint(rng, spread);
         const poster = state.zoneMode === 'poster';
-        const logo = poster && state.typography.enabled ? getTypographyLayout(W, H).logo : null;
 
         // ------------------------------------------------------------------
         // 1. URBAN-BLOCKS (clustered vertical bars)
@@ -486,7 +497,7 @@
         if (logic === 'urban-blocks') {
           const numClusters = Math.max(1, Math.round(1 + intensity * 3.5));
           for (let c = 0; c < numClusters; c++) {
-            const center = getFocalPoint(rng, 0.45);
+            const center = focalPoint(0.45);
             const cols = Math.round(7 + intensity * 12);
             const rows = Math.round(2 + intensity * 3);
             const spacingX = baseUnit * 1.15;
@@ -531,7 +542,7 @@
           const stepX = baseUnit * 3.1;
           const stepY = baseUnit * 1.9;
           const numZones = Math.max(1, Math.round(1 + intensity * 2.5));
-          const anchors = Array.from({ length: numZones }, () => getFocalPoint(rng, 0.5));
+          const anchors = Array.from({ length: numZones }, () => focalPoint(0.5));
 
           const cols = Math.floor(W / stepX);
           const rows = Math.floor(H / stepY);
@@ -570,7 +581,7 @@
         }
 
         else if (logic === 'cluster-scatter') {
-          const origin = getFocalPoint(rng, 0.35);
+          const origin = focalPoint(0.35);
           const radius = minDim * 0.245;
           const direction = rng() * Math.PI * 2;
           const centers = Array.from({ length: 3 }, (_, cluster) => {
@@ -594,38 +605,58 @@
 
         else if (logic === 'water-traces') {
           const frame = state.zoneMode === 'frame';
-          const anchor = getFocalPoint(rng, 0.18);
+          const anchor = focalPoint(0.18);
           const direction = frame ? 0 : state.zoneMode === 'diagonal'
             ? -Math.PI / 4 : (rng() - 0.5) * 1.68 - 0.27;
           const dx = Math.cos(direction);
           const dy = Math.sin(direction);
-          const span = minDim * (0.47 + intensity * 0.47);
-          const width = Math.min(minDim * 0.077, Math.max(22, baseUnit * 4.4));
-          const separation = Math.max(width * 3.35, minDim * 0.145);
-          const segments = Math.ceil(span / Math.max(14, width * 0.60));
+          const travel = Math.min(W / Math.max(0.01, Math.abs(dx)), H / Math.max(0.01, Math.abs(dy)));
+          const span = travel * (0.52 + intensity * 0.39);
+          const width = Math.min(minDim * 0.071, Math.max(20, baseUnit * 4.15));
+          const separation = Math.max(width * 1.90, minDim * 0.195);
+          const phase = rng() * Math.PI * 2;
+          const segments = Math.max(40, Math.ceil(span / 9));
+          const meander = frame ? 0.48 : 1;
+          const traces = [];
 
           for (let trace = 0; trace < 2; trace++) {
-            const phase = rng() * Math.PI * 2;
-            const length = span * (0.87 + rng() * 0.13);
+            const length = span * (0.95 + rng() * 0.05);
+            const bend = rng() * Math.PI * 2;
+            const bankSeed = subSeed + trace * 281;
             const upper = [];
             const lower = [];
             for (let i = 0; i <= segments; i++) {
               const t = i / segments;
-              const along = (t - 0.5 + (i > 0 && i < segments ? (rng() - 0.5) * 0.64 / segments : 0)) * length;
-              const across = (frame ? 0 : (trace - 0.5) * separation)
-                + Math.sin(t * 5.8 + phase) * width * 0.63 + (rng() - 0.5) * width * 0.94;
-              const left = across - width * (0.30 + rng() * 0.26);
-              const right = across + width * (0.30 + rng() * 0.26);
+              const along = (t - 0.5) * length;
+              const common = Math.sin(t * 7.1 + phase) * minDim * 0.071
+                + Math.sin(t * 13.8 + phase * 1.3) * minDim * 0.023;
+              const local = Math.sin(t * 10.5 + bend) * minDim * 0.032
+                + (noise2D(t * 6.5, 2, bankSeed) - 0.5) * width * 0.26;
+              const across = (frame ? 0 : (trace - 0.5) * separation) + (common + local) * meander;
+              const taper = 0.47 + 0.53 * Math.sin(t * Math.PI) ** 0.48;
+              const left = across - width * taper * (0.30 + noise2D(t * 5.1, 3, bankSeed) * 0.23);
+              const right = across + width * taper * (0.30 + noise2D(t * 5.1, 7, bankSeed) * 0.23);
               upper.push({ x: along * dx - left * dy, y: along * dy + left * dx });
               lower.push({ x: along * dx - right * dy, y: along * dy + right * dx });
             }
-            const points = upper.concat(lower.reverse());
+            traces.push({ points: upper.concat(lower.reverse()), bankSeed });
+          }
+
+          const margin = free ? 0 : 0.027;
+          const envelope = getPointBounds(traces.flatMap(trace => trace.points));
+          const fit = Math.min(1, W * (1 - margin * 2) / (envelope.right - envelope.left),
+            H * (1 - margin * 2) / (envelope.bottom - envelope.top));
+          for (const [i, trace] of traces.entries()) {
+            const points = trace.points.map(({ x, y }) => ({ x: x * fit, y: y * fit }));
             const bounds = getPointBounds(points);
-            const x = clamp((frame ? 0.5 : anchor.x) * W, W * 0.026 - bounds.left, W * 0.974 - bounds.right);
-            const y = clamp((frame ? (trace === 0 ? 0.133 : 0.867) : anchor.y) * H,
-              H * 0.027 - bounds.top, H * 0.973 - bounds.bottom);
-            const ribbon = createAquiferRibbon(points, bounds, width / 4.8, effect.contamination, subSeed + trace * 281);
-            items.push({ shape: effect.shape, x, y, color, size: width, order: trace * 0.26, ribbon });
+            const x = clamp((frame ? 0.5 : anchor.x) * W,
+              W * margin - (frame ? bounds.left : envelope.left * fit),
+              W * (1 - margin) - (frame ? bounds.right : envelope.right * fit));
+            const y = clamp((frame ? (i === 0 ? 0.133 : 0.867) : anchor.y) * H,
+              H * margin - (frame ? bounds.top : envelope.top * fit),
+              H * (1 - margin) - (frame ? bounds.bottom : envelope.bottom * fit));
+            const ribbon = createAquiferRibbon(points, bounds, width * fit / 4.8, effect.contamination, trace.bankSeed);
+            items.push({ shape: effect.shape, x, y, color, size: width * fit, order: i * 0.26, ribbon });
           }
         }
 
@@ -640,6 +671,15 @@
               p3 = { x: (0.96 + off) * W, y: (0.04 + off) * H };
               p1 = { x: (0.35 + (rng() - 0.5) * 0.25) * W, y: (0.65 + (rng() - 0.5) * 0.25) * H };
               p2 = { x: (0.65 + (rng() - 0.5) * 0.25) * W, y: (0.35 + (rng() - 0.5) * 0.25) * H };
+            } else if (free) {
+              const horizontal = rng() > 0.48;
+              const anchor = focalPoint(0.53);
+              const end = clamp((horizontal ? anchor.y : anchor.x) + (rng() - 0.5) * 0.54, 0.006, 0.994);
+              const start = clamp((horizontal ? anchor.y : anchor.x) + (rng() - 0.5) * 0.44, 0.006, 0.994);
+              p0 = horizontal ? { x: 0, y: start * H } : { x: start * W, y: 0 };
+              p3 = horizontal ? { x: W, y: end * H } : { x: end * W, y: H };
+              p1 = { x: anchor.x * W, y: clamp(anchor.y + (rng() - 0.5) * 0.35, 0, 1) * H };
+              p2 = { x: clamp(anchor.x + (rng() - 0.5) * 0.35, 0, 1) * W, y: anchor.y * H };
             } else {
               const horizontal = rng() > 0.45;
               if (horizontal) {
@@ -656,7 +696,8 @@
             }
 
             const steps = Math.round(18 + intensity * 38);
-            const reach = 0.29 + intensity * 0.71;
+            const reach = free ? 0.57 + intensity * 0.43 : 0.29 + intensity * 0.71;
+            const startT = free && rng() > 0.5 ? 1 - reach : free ? 0 : (1 - reach) / 2;
             if (state.zoneMode === 'frame') {
               const side = Math.floor(rng() * 4);
               const alongHorizontalEdge = side % 2 === 0;
@@ -668,12 +709,13 @@
             }
             for (let i = 0; i < steps; i++) {
               const t = i / (steps - 1);
-              const along = 0.5 + (t - 0.5) * reach;
+              const along = startT + t * reach;
               const pt = cubicBezier(p0, p1, p2, p3, along);
               const tang = cubicBezierTangent(p0, p1, p2, p3, along);
               const nx = pt.x / W, ny = pt.y / H;
               if (state.zoneMode === 'frame' && isInsideSafeFrame(nx, ny)) continue;
-              if (nx < 0.02 || nx > 0.98 || ny < 0.02 || ny > 0.98) continue;
+              const margin = free ? 0 : 0.02;
+              if (nx < margin || nx > 1 - margin || ny < margin || ny > 1 - margin) continue;
 
               const angle = Math.atan2(tang.y, tang.x) + Math.PI / 2;
               items.push({
@@ -695,7 +737,7 @@
         // 4. TESSELLATION (organic polygon filled with an orthogonal grid)
         // ------------------------------------------------------------------
         else if (logic === 'tessellation') {
-          const anchor = getFocalPoint(rng, 0.35);
+          const anchor = focalPoint(0.35);
           const soil = effect.brownfield !== undefined;
           const step = baseUnit * (soil ? 1.06 : 1.45);
           const fields = new Map();
@@ -708,10 +750,10 @@
           const cos = Math.cos(axis);
           const sin = Math.sin(axis);
 
-          const startX = Math.max(step, Math.floor((cx - radX * 1.3) / step) * step);
-          const endX   = Math.min(W - step, cx + radX * 1.3);
-          const startY = Math.max(step, Math.floor((cy - radY * 1.3) / step) * step);
-          const endY   = Math.min(H - step, cy + radY * 1.3);
+          const startX = Math.max(free ? 0 : step, Math.floor((cx - radX * 1.3) / step) * step);
+          const endX   = Math.min(free ? W : W - step, cx + radX * 1.3);
+          const startY = Math.max(free ? 0 : step, Math.floor((cy - radY * 1.3) / step) * step);
+          const endY   = Math.min(free ? H : H - step, cy + radY * 1.3);
 
           for (let y = startY; y <= endY; y += step) {
             for (let x = startX; x <= endX; x += step) {
@@ -743,6 +785,19 @@
             }
           }
           if (soil) {
+            // Ogni crocino raggiunge metà della maglia soltanto verso un
+            // vicino della stessa parcella. I passaggi restano aperti.
+            const directions = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (const field of fields.values()) {
+              const grid = new Set(field.items.map(item => `${Math.round(item.x / step)},${Math.round(item.y / step)}`));
+              for (const item of field.items) {
+                const col = Math.round(item.x / step);
+                const row = Math.round(item.y / step);
+                item.crossArms = directions.map(([dx, dy]) =>
+                  grid.has(`${col + dx},${row + dy}`) ? step / 2 + 0.02 : item.size * 0.46
+                );
+              }
+            }
             const brownCount = Math.round(fields.size * effect.brownfield / 100);
             const ranked = [...fields.values()].sort((a, b) => a.rank - b.rank);
             for (const field of ranked.slice(0, brownCount)) {
@@ -752,11 +807,12 @@
         }
 
         else if (logic === 'flora-scatter') {
-          const focal = state.zoneMode === 'epicenter' ? state.epicenter : { x: 0.50, y: 0.50 };
+          const focal = state.zoneMode === 'epicenter' ? state.epicenter : free ? freeAnchor : { x: 0.50, y: 0.50 };
           const spacing = baseUnit * (poster ? 1.95 : 1);
           for (let attempt = 0; items.length < effect.maxDots && attempt < effect.maxDots * 32; attempt++) {
-            const nx = 0.025 + rng() * 0.95;
-            const ny = 0.025 + rng() * 0.95;
+            const margin = free ? 0.004 : 0.025;
+            const nx = margin + rng() * (1 - margin * 2);
+            const ny = margin + rng() * (1 - margin * 2);
             if (!passesZoneFilter(nx, ny, rng, true)) continue;
             const distance = Math.hypot(nx - focal.x, ny - focal.y);
             const radial = clamp(distance / (poster ? 0.62 : 0.51), 0, 1);
@@ -765,7 +821,6 @@
             if (rng() > (0.12 + radial ** 1.35 * 0.88) * (0.25 + grain * 0.75) * border) continue;
             const x = nx * W;
             const y = ny * H;
-            if (isInsideLogo(x, y, logo)) continue;
             if (items.some(dot => Math.hypot(x - dot.x, y - dot.y) < spacing)) continue;
             items.push({
               shape: effect.shape, x, y, color, order: radial,
@@ -784,7 +839,7 @@
           const radius = 0.19 + intensity * 0.47;
           const center = state.zoneMode === 'epicenter'
             ? pointOnEdge(Math.floor(rng() * 4), rng, 1, 1)
-            : getFocalPoint(rng);
+            : focalPoint();
           let attempts = 0;
 
           const maxAttempts = count * (effect.maxDots ? 24 : 8);
@@ -826,16 +881,16 @@
         // 6. DENSE-PATCH (Brownfield: compact irregular high-density patch)
         // ------------------------------------------------------------------
         else if (logic === 'dense-patch') {
-          const anchor = getFocalPoint(rng, 0.4);
+          const anchor = focalPoint(0.4);
           const step = baseUnit * 1.15;
           const rad = (0.13 + intensity * 0.19) * minDim;
           const cx = anchor.x * W;
           const cy = anchor.y * H;
 
-          const startX = Math.max(step, Math.floor((cx - rad * 1.35) / step) * step);
-          const endX   = Math.min(W - step, cx + rad * 1.35);
-          const startY = Math.max(step, Math.floor((cy - rad * 1.35) / step) * step);
-          const endY   = Math.min(H - step, cy + rad * 1.35);
+          const startX = Math.max(free ? 0 : step, Math.floor((cx - rad * 1.35) / step) * step);
+          const endX   = Math.min(free ? W : W - step, cx + rad * 1.35);
+          const startY = Math.max(free ? 0 : step, Math.floor((cy - rad * 1.35) / step) * step);
+          const endY   = Math.min(free ? H : H - step, cy + rad * 1.35);
 
           for (let y = startY; y <= endY; y += step) {
             for (let x = startX; x <= endX; x += step) {
@@ -950,10 +1005,11 @@
           const layoutAngle = frame ? 0 : state.zoneMode === 'diagonal' ? -Math.PI / 5 : (rng() - 0.5) * Math.PI * 0.68;
           const cos = Math.cos(layoutAngle);
           const sin = Math.sin(layoutAngle);
-          const anchor = getFocalPoint(rng, 0.12);
-          const centerX = frame ? 0.5 : clamp(anchor.x, 0.44, 0.56);
-          const centerY = frame ? 0.5 : clamp(anchor.y, 0.44, 0.56);
-          const fit = frame ? 1 : 0.86;
+          const anchor = focalPoint(0.12);
+          const centerX = frame ? 0.5 : clamp(anchor.x, free ? 0.35 : 0.44, free ? 0.65 : 0.56);
+          const centerY = frame ? 0.5 : clamp(anchor.y, free ? 0.35 : 0.44, free ? 0.65 : 0.56);
+          const fit = frame ? 1 : free ? 0.72 : 0.86;
+          const edgeInset = free ? 0.012 : 0.045;
           const nodeSize = Math.min(baseUnit * 1.15, minDim * 0.022);
           const strokeWidth = Math.max(1.5, baseUnit * 0.18);
           const trunks = [[], []];
@@ -1002,7 +1058,7 @@
               y: root.y + Math.sin(angle) * length,
               degree: 0, order: 0.43 + rng() * 0.52
             };
-            if (tip.x < W * 0.045 || tip.x > W * 0.955 || tip.y < H * 0.045 || tip.y > H * 0.955) continue;
+            if (tip.x < W * edgeInset || tip.x > W * (1 - edgeInset) || tip.y < H * edgeInset || tip.y > H * (1 - edgeInset)) continue;
             if (frame && (tree === 0 ? tip.y > H * 0.232 : tip.y < H * 0.768)) continue;
             if (trunks.some(nodes => nodes.some(node => Math.hypot(tip.x - node.x, tip.y - node.y) < nodeSize * 1.7))) continue;
             if (edges.some(({a, b}) => segmentsCross(root, tip, a, b))) continue;
@@ -1028,7 +1084,7 @@
             [0.15, 0.195], [0.245, 0.105], [0.10, 0.255], [0.19, 0.143], [0.29, 0.085], [0.22, 0.28]
           ].slice(0, count).map(([x, y]) => ({
             x: x + (rng() - 0.5) * 0.10, y: y + (rng() - 0.5) * 0.075
-          })) : getClusterCenters(rng, count, 0.16 + intensity * 0.13);
+          })) : getClusterCenters(rng, count, 0.16 + intensity * 0.13, focalPoint(0.12));
           const step = baseUnit * (poster ? 0.77 : 1.60);
           const villageRadius = Math.min(minDim * (0.064 + intensity * 0.054), step * (poster ? 5.65 : 7));
           centers.forEach((center, village) => {
@@ -1046,7 +1102,6 @@
                 const x = center.x * W + lx * cos - ly * sin;
                 const y = center.y * H + lx * sin + ly * cos;
                 if (!passesZoneFilter(x / W, y / H, rng, false)) continue;
-                if (poster && isInsideLogo(x, y, logo)) continue;
                 const houseSize = baseUnit * (poster ? 0.48 : 1);
                 const w = houseSize * (0.64 + rng() * 0.59);
                 const h = houseSize * (0.55 + rng() * 0.66);
@@ -1062,10 +1117,10 @@
         }
 
         else if (logic === 'tension-arcs') {
-          const anchor = getFocalPoint(rng, 0.2);
+          const anchor = focalPoint(0.2);
           const numArcs = Math.max(2, Math.round(2 + intensity * 6));
           for (let a = 0; a < numArcs; a++) {
-            const target = getFocalPoint(rng, 0.75);
+            const target = focalPoint(0.75);
             const x1 = anchor.x * W, y1 = anchor.y * H;
             const reach = 0.35 + intensity * 0.65;
             const x2 = x1 + (target.x * W - x1) * reach;
@@ -1110,7 +1165,7 @@
             { x: 0.18, y: 0.82 },
             { x: 0.82, y: 0.18 },
             { x: 0.18, y: 0.18 }
-          ][cornerIdx] : getFocalPoint(rng, 0.31);
+          ][cornerIdx] : focalPoint(0.31);
 
           const count = Math.round(20 + intensity * 110);
           let tries = 0;
@@ -1162,7 +1217,7 @@
           ].map(([x, y, rx, ry, weight]) => ({
             x: x + (rng() - 0.5) * 0.115, y: y + (rng() - 0.5) * 0.105,
             rx: rx * (0.54 + intensity * 0.65), ry: ry * (0.52 + intensity * 0.71), weight
-          })) : getClusterCenters(rng, 5, 0.13 + intensity * 0.12).map(center => ({
+          })) : getClusterCenters(rng, 5, 0.13 + intensity * 0.12, focalPoint(0.12)).map(center => ({
             ...center, rx: range / W * (0.75 + rng() * 0.68), ry: range / H * (0.72 + rng() * 0.77),
             weight: 0.62 + rng() * 0.38
           }));
@@ -1184,8 +1239,7 @@
               }
               const grain = fbm2D(nx * 26, ny * 30, subSeed);
               const variation = 0.15 + 0.93 * grain ** 1.25;
-              const clearLogo = poster && isInsideLogo(px, py, logo) ? 0.10 : 1;
-              const probability = Math.min(0.48, density ** 1.18 * variation * (0.41 + intensity * 0.82)) * clearLogo;
+              const probability = Math.min(0.48, density ** 1.18 * variation * (0.41 + intensity * 0.82));
               if (hash2D(col, row, subSeed + 37) >= probability) continue;
               items.push({
                 shape: 'square', x: px, y: py, size: side, w: side, h: side, color,
@@ -1198,7 +1252,7 @@
         else if (logic === 'plume') {
           const origin = state.zoneMode === 'epicenter'
             ? { x: state.epicenter.x, y: state.epicenter.y }
-            : getFocalPoint(rng, 0.25);
+            : focalPoint(0.25);
 
           // Wind direction angle
           let windAngle = state.zoneMode === 'diagonal'
@@ -1265,26 +1319,26 @@
         // ------------------------------------------------------------------
         else if (logic === 'heat-island' || logic === 'property-grid') {
           const property = logic === 'property-grid';
-          const origin = getFocalPoint(rng, 0.10);
-          const step = Math.max(8, baseUnit * (property ? 1.32 : 1.18));
+          const origin = focalPoint(0.10);
+          const step = Math.max(property ? 7 : 8, baseUnit * (property ? 1.08 : 1.18));
           const maxR = (0.10 + intensity * 0.43) * minDim;
           const merging = effect.mergeDots ? clamp((intensity - 0.32) / 0.68, 0, 1) : 0;
-          const maxDiameterRatio = property ? 0.82 : 0.97 + merging * 0.25;
+          const maxDiameterRatio = property ? 0.92 : 0.97 + merging * 0.25;
           const feathered = property || effect.shape === 'halftone';
-          const radiusRatio = property ? DIAMOND_RADIUS_RATIO : HALFTONE_RADIUS_RATIO;
+          const radiusRatio = property ? 0.50 : HALFTONE_RADIUS_RATIO;
           const fieldAngle = property ? (rng() - 0.5) * 1.3 : 0;
           const cos = Math.cos(fieldAngle);
           const sin = Math.sin(fieldAngle);
           const parcelAt = property ? createParcelMap(subSeed, intensity) : null;
-          const featherWidth = Math.max(step * 3, maxR * 0.14);
+          const featherWidth = Math.max(step * 3, maxR * (property ? 0.105 : 0.14));
           const cx = origin.x * W;
           const cy = origin.y * H;
 
           const span = maxR * (feathered ? 1.25 : 1.2);
-          const startX = Math.max(step, Math.floor((cx - span) / step) * step);
-          const endX = Math.min(W - step, cx + span);
-          const startY = Math.max(step, Math.floor((cy - span) / step) * step);
-          const endY = Math.min(H - step, cy + span);
+          const startX = Math.max(free ? 0 : step, Math.floor((cx - span) / step) * step);
+          const endX = Math.min(free ? W : W - step, cx + span);
+          const startY = Math.max(free ? 0 : step, Math.floor((cy - span) / step) * step);
+          const endY = Math.min(free ? H : H - step, cy + span);
           const smooth = value => {
             const t = clamp(value, 0, 1);
             return t * t * (3 - 2 * t);
@@ -1300,7 +1354,7 @@
               const dy = (y - cy) / maxR;
               const d = Math.hypot(dx, dy);
               const effD = d + (nVal - 0.5) * 0.38;
-              const edge = feathered ? 1.06 : 1;
+              const edge = property ? 1.085 : feathered ? 1.06 : 1;
               if (effD >= edge) continue;
               if (property) {
                 const u = dx * cos - dy * sin;
@@ -1317,26 +1371,26 @@
                   const dy = Math.max(SAFE_FRAME.top * H - y, y - SAFE_FRAME.bottom * H, 0);
                   clearance = Math.min(clearance, Math.hypot(dx, dy));
                 }
-                const fringe = smooth(heat / 0.30) * smooth(clearance / featherWidth);
+                const fringe = smooth(heat / (property ? 0.16 : 0.30)) * (free ? 1 : smooth(clearance / featherWidth));
                 const core = smooth(heat / 0.73);
                 const grain = fbm2D(nx * 7.2 + 4, ny * 7.2 + 9, subSeed + 17);
                 const pocket = smooth((grain - 0.40) / 0.32);
-                const dot = 0.28 + core * (0.62 + (grain - 0.5) * 0.28);
+                const dot = property ? 0.46 + core * (0.49 + (grain - 0.5) * 0.26)
+                  : 0.28 + core * (0.62 + (grain - 0.5) * 0.28);
                 // A maglia quadrata gli interstizi restano leggibili anche al massimo.
                 const diameterRatio = Math.min(maxDiameterRatio, (dot + merging * core * pocket * 0.54) * fringe);
                 size = step * diameterRatio / (2 * radiusRatio);
                 if (size < 0.42) continue;
               }
-              items.push({
-                shape: effect.shape,
-                x, y,
-                size,
-                w: size,
-                h: size,
-                rot: 0,
-                color,
-                order: clamp(d, 0, 1)
-              });
+              const item = { shape: effect.shape, x, y, size, w: size, h: size, rot: 0, color, order: clamp(d, 0, 1) };
+              if (property) {
+                const col = Math.round(x / step), row = Math.round(y / step);
+                item.house = Math.floor(hash2D(col, row, subSeed + 31) * HOUSE_FOOTPRINTS.length);
+                item.w *= 0.87 + hash2D(col, row, subSeed + 47) * 0.13;
+                item.h *= 0.67 + hash2D(col, row, subSeed + 61) * 0.33;
+                item.rot = hash2D(col, row, subSeed + 89) < 0.31 ? Math.PI / 2 : 0;
+              }
+              items.push(item);
             }
           }
         }
@@ -1345,15 +1399,16 @@
         // 12. ISOPHONES (Rumore: concentric acoustic rings / vibrating wave bands)
         // ------------------------------------------------------------------
         else if (logic === 'diagonal-bands') {
-          const focal = getFocalPoint(rng, 0.10);
+          const focal = focalPoint(0.10);
           const angle = -Math.PI * 0.17;
           const dx = Math.cos(angle);
           const dy = Math.sin(angle);
-          const reach = minDim * (0.123 + intensity * 0.148);
-          const gap = Math.max(7, baseUnit * 1.48);
-          const segment = Math.min(gap * 2.65, reach * 0.34);
-          const cx = focal.x * W;
-          const cy = focal.y * H;
+          const reach = minDim * (0.145 + intensity * 0.178);
+          const gap = Math.max(5, baseUnit * 1.02);
+          const segment = Math.min(gap * 2.50, reach * 0.34);
+          const inset = free ? reach * 0.58 : 0;
+          const cx = clamp(focal.x * W, inset, W - inset);
+          const cy = clamp(focal.y * H, inset, H - inset);
           const valid = (x, y) => passesZoneFilter(x / W, y / H, rng, false);
           const direction = rng() * Math.PI * 2;
           const along = Math.cos(direction);
@@ -1408,7 +1463,7 @@
         else if (logic === 'isophones') {
           const origin = state.zoneMode === 'epicenter'
             ? { x: state.epicenter.x, y: state.epicenter.y }
-            : getFocalPoint(rng, 0.3);
+            : focalPoint(0.3);
 
           const cx = origin.x * W;
           const cy = origin.y * H;
@@ -1552,7 +1607,7 @@
             const height = pitch * (0.72 + hash2D(col, row, seed + 11) * 0.14);
             if (!ribbonIntersectsStrip(points, x, y, width, height)) continue;
             strips.push({
-              rank: hash2D(col, row, seed + 23),
+              rank: hash2D(col, row, seed + 23), x, y, width, height,
               d: `M${f(x)} ${f(y)}H${f(x + width)}V${f(y + height)}H${f(x)}Z`
             });
           }
@@ -1560,13 +1615,106 @@
         strips.sort((a, b) => a.rank - b.rank);
         const cutoff = Math.round(strips.length * contamination / 100);
         const bands = [
-          { color: '#774400', d: strips.slice(0, cutoff).map(strip => strip.d).join('') },
-          { color: '#2CC6C6', d: strips.slice(cutoff).map(strip => strip.d).join('') }
+          createAquiferBand('#774400', strips.slice(0, cutoff)),
+          createAquiferBand('#2CC6C6', strips.slice(cutoff))
         ].filter(band => band.d);
-        return {
-          outline, bounds, clip: new Path2D(outline),
-          bands: bands.map(band => ({ ...band, path: new Path2D(band.d) }))
+        return { outline, bounds, clip: new Path2D(outline), bands };
+      }
+
+      function createAquiferBand(color, strips) {
+        const d = strips.map(strip => strip.d).join('');
+        return { color, strips, d, path: new Path2D(d) };
+      }
+
+      let logoOccupancy;
+      function getLogoInkTest(logo, pad) {
+        const resolution = 2;
+        if (logoOccupancy?.scale !== logo.scale) {
+          const surface = document.createElement('canvas');
+          const w = Math.ceil(logo.width * resolution);
+          const h = Math.ceil(logo.height * resolution);
+          surface.width = w;
+          surface.height = h;
+          const ctx = surface.getContext('2d', { willReadFrequently: true });
+          const scale = logo.scale * resolution;
+          ctx.scale(scale, scale);
+          for (const path of LOGO_PATHS) ctx.fill(path);
+
+          // La somma cumulativa permette di verificare l'ingombro di un modulo
+          // rispetto al disegno delle lettere con una sola lettura per angolo.
+          const alpha = ctx.getImageData(0, 0, w, h).data;
+          const stride = w + 1;
+          const integral = new Uint32Array(stride * (h + 1));
+          for (let y = 1; y <= h; y++) {
+            let row = 0;
+            for (let x = 1; x <= w; x++) {
+              row += alpha[((y - 1) * w + x - 1) * 4 + 3] > 0 ? 1 : 0;
+              integral[y * stride + x] = integral[(y - 1) * stride + x] + row;
+            }
+          }
+          logoOccupancy = { scale: logo.scale, w, h, stride, integral };
+        }
+        const { w, h, stride, integral } = logoOccupancy;
+        return (left, top, right, bottom) => {
+          const x1 = Math.max(0, Math.floor((left - logo.x - pad) * resolution));
+          const y1 = Math.max(0, Math.floor((top - logo.y - pad) * resolution));
+          const x2 = Math.min(w, Math.ceil((right - logo.x + pad) * resolution));
+          const y2 = Math.min(h, Math.ceil((bottom - logo.y + pad) * resolution));
+          if (x1 >= x2 || y1 >= y2) return false;
+          return integral[y2 * stride + x2] - integral[y1 * stride + x2]
+            - integral[y2 * stride + x1] + integral[y1 * stride + x1] > 0;
         };
+      }
+
+      function clearLayerAroundLogo(layer, hitsLogo, keepWholeLines) {
+        layer.items = layer.items.filter(item => {
+          const { x, y, ribbon } = item;
+          if (!ribbon) {
+            const radius = Math.max(item.size, item.w || 0, item.h || 0) * 0.75;
+            return !hitsLogo(x - radius, y - radius, x + radius, y + radius);
+          }
+          const bounds = ribbon.bounds;
+          if (!hitsLogo(x + bounds.left, y + bounds.top, x + bounds.right, y + bounds.bottom)) return true;
+
+          // Le falde mantengono il motivo e la sagoma. Si escludono le
+          // singole bande che entrerebbero in contatto con una lettera.
+          ribbon.bands = ribbon.bands.map(band => createAquiferBand(band.color,
+            band.strips.filter(strip => !hitsLogo(x + strip.x, y + strip.y,
+              x + strip.x + strip.width, y + strip.y + strip.height))
+          )).filter(band => band.d);
+          return ribbon.bands.length > 0;
+        });
+
+        layer.lines = layer.lines.flatMap(line => {
+          const radius = line.strokeWidth / 2;
+          const hits = (x1, y1, x2, y2) => hitsLogo(
+            Math.min(x1, x2) - radius, Math.min(y1, y2) - radius,
+            Math.max(x1, x2) + radius, Math.max(y1, y2) + radius
+          );
+          if (!hits(line.x1, line.y1, line.x2, line.y2)) return [line];
+          const dx = line.x2 - line.x1, dy = line.y2 - line.y1;
+          const count = Math.max(1, Math.ceil(Math.hypot(dx, dy) / 4));
+          const fragments = [];
+          let start = null;
+          let interrupted = false;
+          for (let i = 0; i < count; i++) {
+            const x1 = line.x1 + dx * i / count;
+            const y1 = line.y1 + dy * i / count;
+            const x2 = line.x1 + dx * (i + 1) / count;
+            const y2 = line.y1 + dy * (i + 1) / count;
+            if (hits(x1, y1, x2, y2)) {
+              if (keepWholeLines) return [];
+              interrupted = true;
+              if (start) fragments.push({ ...line, ...start, x2: x1, y2: y1 });
+              start = null;
+            } else if (!start) {
+              start = { x1, y1 };
+            }
+          }
+          if (!interrupted) return [line];
+          if (start) fragments.push({ ...line, ...start });
+          return fragments;
+        });
       }
 
       function redistributeLayer(layer, effect, W, H) {
@@ -1659,9 +1807,9 @@
             const size = template?.size || baseUnit;
             const item = {
               shape: effect.shape, color: effect.color, w: size, h: size, rot: 0,
-              ...template, x, y, size, order
+              ...template, x, y, size, order, crossArms: undefined
             };
-            if (usesHouseLayout(effect) && item.house === undefined) {
+            if ((effect.shape === 'house-fill' || effect.shape === 'house-outline') && item.house === undefined) {
               item.house = Math.floor(rng() * HOUSE_FOOTPRINTS.length);
             }
             if (effect.id === 'traffico') {
@@ -1686,6 +1834,8 @@
           'flora-fauna', 'pressione-rete', 'bollette', 'traffico', 'tralicci'
         ];
 
+        const logo = state.typography.enabled ? getTypographyLayout(W, H).logo : null;
+        const hitsLogo = logo ? getLogoInkTest(logo, 3 + Math.min(W, H) * 0.0014) : null;
         const houses = state.effects.find(effect => effect.id === HOUSE_LAYER_ID);
         let houseLayout;
         renderOrderIds.forEach((id, idx) => {
@@ -1703,6 +1853,7 @@
             redistributeLayer(layer, eff, W, H);
           }
           applyBrushStrokes(layer, eff, W, H);
+          if (hitsLogo) clearLayerAroundLogo(layer, hitsLogo, id === 'rumore');
           const glitchOrder = createRNG(hash2D(idx, 738, state.seed) * 0x100000000);
           for (const item of layer.items) item.glitchDelay = glitchOrder();
           for (const line of layer.lines) line.glitchDelay = glitchOrder();
@@ -1852,10 +2003,11 @@
           }
           case 'cross-dot': {
             const arm = s * 0.46;
+            const [left, right, top, bottom] = item.crossArms || [arm, arm, arm, arm];
             ctx.lineWidth = Math.max(1.4, s * 0.32);
             ctx.beginPath();
-            ctx.moveTo(-arm, 0); ctx.lineTo(arm, 0);
-            ctx.moveTo(0, -arm); ctx.lineTo(0, arm);
+            ctx.moveTo(-left, 0); ctx.lineTo(right, 0);
+            ctx.moveTo(0, -top); ctx.lineTo(0, bottom);
             ctx.stroke();
             break;
           }
@@ -1873,21 +2025,6 @@
             ctx.beginPath();
             ctx.arc(0, 0, s * 0.45, 0, Math.PI * 2);
             ctx.stroke();
-            break;
-          }
-          case 'diamond': {
-            const r = s * DIAMOND_RADIUS_RATIO;
-            ctx.beginPath();
-            ctx.moveTo(0, -r);
-            ctx.lineTo(r, 0);
-            ctx.lineTo(0, r);
-            ctx.lineTo(-r, 0);
-            ctx.closePath();
-            ctx.fill();
-            ctx.fillStyle = DIAMOND_DOT_COLOR;
-            ctx.beginPath();
-            ctx.arc(0, 0, s * DIAMOND_DOT_RADIUS_RATIO, 0, Math.PI * 2);
-            ctx.fill();
             break;
           }
           case 'plus': {
@@ -1976,43 +2113,99 @@
         };
       }
 
-      function drawTypographyCanvas(ctx, W, H, progress) {
+      function getTypographyArtwork(ctx, W, H, bgInfo) {
         const typography = state.typography;
-        if (!typography.enabled) return;
-        const bgInfo = BACKGROUNDS[state.background];
-        const alpha = clamp(progress * 1.4, 0, 1);
-        if (alpha <= 0.01) return;
+        if (!typography.enabled) return { logo: null, lines: [], reserved: [], effectClip: '' };
 
         const layout = getTypographyLayout(W, H);
+        const lines = [];
+        if (layout.title && typography.title.trim()) {
+          lines.push({ ...layout.title, text: typography.title, font: TITLE_FONT, weight: 700, color: bgInfo.ink });
+        }
+        if (typography.subtitle.trim()) {
+          const posterLogo = layout.logo && state.zoneMode === 'poster';
+          lines.push({
+            ...layout.subtitle, text: typography.subtitle,
+            font: posterLogo ? TITLE_FONT : SUBTITLE_FONT,
+            weight: posterLogo ? 700 : 500, color: posterLogo ? typography.logoColor : bgInfo.subInk
+          });
+        }
+
+        const pad = Math.max(7, Math.min(W, H) * 0.014);
+        const reserved = [];
+        function reserve(left, top, right, bottom) {
+          const box = {
+            left: clamp(Math.floor(left - pad), 0, W), top: clamp(Math.floor(top - pad), 0, H),
+            right: clamp(Math.ceil(right + pad), 0, W), bottom: clamp(Math.ceil(bottom + pad), 0, H)
+          };
+          if (box.left < box.right && box.top < box.bottom) reserved.push(box);
+        }
+
+        ctx.save();
+        ctx.textBaseline = 'alphabetic';
+        for (const line of lines) {
+          const { x, y, size, anchor, font, weight, text } = line;
+          ctx.textAlign = anchor === 'middle' ? 'center' : 'left';
+          let left = x, right = x, ascent = size * 0.85, descent = size * 0.24;
+          // L'export può usare il font di ripiego su un altro computer.
+          const fallback = font === TITLE_FONT ? 'sans-serif' : 'monospace';
+          for (const family of [font, fallback]) {
+            ctx.font = `${weight} ${size}px ${family}`;
+            const metrics = ctx.measureText(text);
+            const offset = anchor === 'middle' ? metrics.width / 2 : 0;
+            left = Math.min(left, x - Math.max(offset, metrics.actualBoundingBoxLeft || 0));
+            right = Math.max(right, x + Math.max(metrics.width - offset, metrics.actualBoundingBoxRight || 0));
+            ascent = Math.max(ascent, metrics.actualBoundingBoxAscent || 0);
+            descent = Math.max(descent, metrics.actualBoundingBoxDescent || 0);
+          }
+          reserve(left, y - ascent, right, y + descent);
+        }
+        ctx.restore();
+
+        // Un unico contorno di rispetto quando titolo e sottotitolo si toccano.
+        if (reserved.length === 2) {
+          const [a, b] = reserved;
+          if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) {
+            reserved.splice(0, 2, {
+              left: Math.min(a.left, b.left), top: Math.min(a.top, b.top),
+              right: Math.max(a.right, b.right), bottom: Math.max(a.bottom, b.bottom)
+            });
+          }
+        }
+        const effectClip = reserved.length ? `M0 0H${W}V${H}H0Z` +
+          reserved.map(({ left, top, right, bottom }) => `M${left} ${top}H${right}V${bottom}H${left}Z`).join('') : '';
+        return { logo: layout.logo, lines, reserved, effectClip };
+      }
+
+      function isMarkOutsideTypography(item, reserved) {
+        if (!reserved.length || item.ribbon) return true;
+        const radius = Math.max(item.size, item.w || 0, item.h || 0) * 0.75;
+        return !reserved.some(box => item.x + radius > box.left && item.x - radius < box.right &&
+          item.y + radius > box.top && item.y - radius < box.bottom);
+      }
+
+      function drawTypographyCanvas(ctx, artwork, progress) {
+        const alpha = clamp(progress * 1.4, 0, 1);
+        if (alpha <= 0.01 || (!artwork.logo && !artwork.lines.length)) return;
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.textBaseline = 'alphabetic';
 
-        if (layout.logo) {
-          const { x, y, scale } = layout.logo;
+        if (artwork.logo) {
+          const { x, y, scale } = artwork.logo;
           ctx.save();
           ctx.translate(x, y);
           ctx.scale(scale, scale);
-          ctx.fillStyle = typography.logoColor;
+          ctx.fillStyle = state.typography.logoColor;
           for (const path of LOGO_PATHS) ctx.fill(path);
           ctx.restore();
-        } else {
-          const { x, y, size, anchor } = layout.title;
-          ctx.textAlign = anchor === 'middle' ? 'center' : 'left';
-          ctx.font = `700 ${size}px 'Eiffel', 'Inter', sans-serif`;
-          ctx.fillStyle = bgInfo.ink;
-          ctx.fillText(typography.title, x, y);
         }
-
-        if (typography.subtitle) {
-          const { x, y, size, anchor } = layout.subtitle;
-          const posterLogo = layout.logo && state.zoneMode === 'poster';
-          ctx.textAlign = anchor === 'middle' ? 'center' : 'left';
-          ctx.font = posterLogo ? `700 ${size}px 'Eiffel', 'Inter', sans-serif` : `500 ${size}px 'IBM Plex Mono', monospace`;
-          ctx.fillStyle = posterLogo ? typography.logoColor : bgInfo.subInk;
-          ctx.fillText(typography.subtitle, x, y);
+        for (const line of artwork.lines) {
+          ctx.textAlign = line.anchor === 'middle' ? 'center' : 'left';
+          ctx.font = `${line.weight} ${line.size}px ${line.font}`;
+          ctx.fillStyle = line.color;
+          ctx.fillText(line.text, line.x, line.y);
         }
-
         ctx.restore();
       }
 
@@ -2032,8 +2225,14 @@
           ctx.fillRect(0, 0, W, H);
         }
 
+        const artwork = getTypographyArtwork(ctx, W, H, bgInfo);
+        if (artwork.effectClip) {
+          ctx.save();
+          ctx.clip(new Path2D(artwork.effectClip), 'evenodd');
+        }
+
         // Draw all active layers
-        state.layers.forEach((layer, effectId) => {
+        state.layers.forEach((layer) => {
           // 1. Connector lines (e.g. Tralicci vectors)
           for (let i = 0; i < layer.lines.length; i++) {
             const ln = layer.lines[i];
@@ -2046,7 +2245,7 @@
 
             ctx.save();
             ctx.globalAlpha = anim.alpha * (ln.opacity ?? 0.85);
-            ctx.strokeStyle = effectId === 'rumore' && state.background === 'dark' ? '#F1F1EF' : ln.color;
+            ctx.strokeStyle = ln.color;
             ctx.lineWidth = ln.strokeWidth;
             ctx.beginPath();
             ctx.moveTo(ln.x1, ln.y1);
@@ -2060,13 +2259,15 @@
           // 2. Micro-geometry items
           for (let i = 0; i < layer.items.length; i++) {
             const item = layer.items[i];
+            if (!isMarkOutsideTypography(item, artwork.reserved)) continue;
             const anim = computeItemAnim(item, progress, W, H);
             drawShapeCanvas(ctx, item, anim);
           }
         });
 
         // 3. Optional Typography Overlay
-        drawTypographyCanvas(ctx, W, H, progress);
+        if (artwork.effectClip) ctx.restore();
+        drawTypographyCanvas(ctx, artwork, progress);
       }
 
       /* ======================================================================
@@ -2163,6 +2364,8 @@
         const { width: W, height: H } = FORMATS[state.format];
         const bgInfo = BACKGROUNDS[state.background];
         const r = n => Number(n.toFixed(2));
+        const artwork = getTypographyArtwork(canvas.getContext('2d'), W, H, bgInfo);
+        const clipAttribute = artwork.effectClip ? ' clip-path="url(#typography-clearance)"' : '';
 
         let parts = [];
         parts.push(`<?xml version="1.0" encoding="UTF-8"?>`);
@@ -2173,19 +2376,23 @@
           parts.push(`  <g id="background"><rect width="${W}" height="${H}" fill="${bgInfo.hex}"/></g>`);
         }
 
+        if (artwork.effectClip) {
+          parts.push(`  <defs><clipPath id="typography-clearance"><path clip-rule="evenodd" d="${artwork.effectClip}"/></clipPath></defs>`);
+        }
+
         state.layers.forEach((layer, effectId) => {
           const eff = state.effects.find(e => e.id === effectId);
           if (layer.items.length === 0 && layer.lines.length === 0) return;
-          parts.push(`  <g id="${effectId}" data-name="${eff.name}">`);
+          parts.push(`  <g id="${effectId}" data-name="${eff.name}"${clipAttribute}>`);
 
           // Connector lines
           for (const ln of layer.lines) {
-            const ink = effectId === 'rumore' && state.background === 'dark' ? '#F1F1EF' : ln.color;
-            parts.push(`    <line x1="${r(ln.x1)}" y1="${r(ln.y1)}" x2="${r(ln.x2)}" y2="${r(ln.y2)}" stroke="${ink}" stroke-width="${r(ln.strokeWidth)}" stroke-opacity="${ln.opacity ?? 0.85}"/>`);
+            parts.push(`    <line x1="${r(ln.x1)}" y1="${r(ln.y1)}" x2="${r(ln.x2)}" y2="${r(ln.y2)}" stroke="${ln.color}" stroke-width="${r(ln.strokeWidth)}" stroke-opacity="${ln.opacity ?? 0.85}"/>`);
           }
 
           // Micro-geometries
           for (const [itemIndex, item] of layer.items.entries()) {
+            if (!isMarkOutsideTypography(item, artwork.reserved)) continue;
             const s = item.size;
             const rotDeg = item.rot ? r(item.rot * 180 / Math.PI) : 0;
             const transform = `translate(${r(item.x)},${r(item.y)})${rotDeg ? ` rotate(${rotDeg})` : ''}`;
@@ -2226,9 +2433,10 @@
                 break;
               }
               case 'cross-dot': {
-                const arm = r(s * 0.46);
+                const arm = s * 0.46;
+                const [left, right, top, bottom] = item.crossArms || [arm, arm, arm, arm];
                 const sw = r(Math.max(1.4, s * 0.32));
-                parts.push(`    <path${tf} d="M${-arm},0 H${arm} M0,${-arm} V${arm}" stroke="${item.color}" stroke-width="${sw}" fill="none"/>`);
+                parts.push(`    <path${tf} d="M${r(-left)},0 H${r(right)} M0,${r(-top)} V${r(bottom)}" stroke="${item.color}" stroke-width="${sw}" fill="none"/>`);
                 break;
               }
               case 'job-circle':
@@ -2237,11 +2445,6 @@
               case 'hollow-circle': {
                 const sw = r(Math.max(1.6, s * 0.22));
                 parts.push(`    <circle cx="${r(item.x)}" cy="${r(item.y)}" r="${r(s*0.45)}" fill="none" stroke="${item.color}" stroke-width="${sw}"/>`);
-                break;
-              }
-              case 'diamond': {
-                const dr = r(s * DIAMOND_RADIUS_RATIO);
-                parts.push(`    <g${tf}><polygon points="0,${-dr} ${dr},0 0,${dr} ${-dr},0" fill="${item.color}"/><circle r="${r(s * DIAMOND_DOT_RADIUS_RATIO)}" fill="${DIAMOND_DOT_COLOR}"/></g>`);
                 break;
               }
               case 'plus': {
@@ -2280,28 +2483,17 @@
           parts.push(`  </g>`);
         });
 
-        const typography = state.typography;
-        if (typography.enabled) {
-          const layout = getTypographyLayout(W, H);
-          const esc = str => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          const titleFont = 'Eiffel, Inter, sans-serif';
-          const subFont = 'IBM Plex Mono, monospace';
-          function textMarkup(box, value, font, weight, fill) {
-            return `    <text x="${r(box.x)}" y="${r(box.y)}" text-anchor="${box.anchor}" font-family="${font}" font-weight="${weight}" font-size="${box.size}" fill="${fill}">${esc(value)}</text>`;
-          }
+        if (artwork.logo || artwork.lines.length) {
+          const esc = str => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
           parts.push('  <g id="typography-overlay">');
-          if (layout.logo) {
-            const { x, y, scale } = layout.logo;
-            parts.push(`    <g id="poster-logo" role="img" aria-label="The Clouded Issue" fill="${typography.logoColor}" transform="translate(${r(x)} ${r(y)}) scale(${scale.toFixed(6)})">`);
+          if (artwork.logo) {
+            const { x, y, scale } = artwork.logo;
+            parts.push(`    <g id="poster-logo" role="img" aria-label="The Clouded Issue" fill="${state.typography.logoColor}" transform="translate(${r(x)} ${r(y)}) scale(${scale.toFixed(6)})">`);
             for (const path of CLOUD_EDITION_LOGO.paths) parts.push(`      <path d="${path}"/>`);
             parts.push('    </g>');
-          } else {
-            parts.push(textMarkup(layout.title, typography.title, titleFont, 700, bgInfo.ink));
           }
-          if (typography.subtitle) {
-            const posterLogo = layout.logo && state.zoneMode === 'poster';
-            parts.push(textMarkup(layout.subtitle, typography.subtitle, posterLogo ? titleFont : subFont,
-              posterLogo ? 700 : 500, posterLogo ? typography.logoColor : bgInfo.subInk));
+          for (const {x, y, anchor, font, weight, size, color, text} of artwork.lines) {
+            parts.push(`    <text x="${r(x)}" y="${r(y)}" text-anchor="${anchor}" font-family="${font}" font-weight="${weight}" font-size="${size}" fill="${color}">${esc(text)}</text>`);
           }
           parts.push('  </g>');
         }
@@ -2741,8 +2933,9 @@
       function updateStageHint() {
         const hint = document.getElementById('epicenterHint');
         hint.textContent = state.brush.enabled ? 'Trascina sul foglio per disegnare'
+          : state.zoneMode === 'epicenter' ? "Clicca sul foglio per spostare l'epicentro"
           : state.zoneMode === 'poster' ? 'Composizione poster'
-          : "Clicca sul foglio per spostare l'epicentro";
+          : '';
       }
 
       function setZoneMode(mode) {
@@ -2793,10 +2986,6 @@
         rebuildGeometry();
       }
 
-      function updateTypographyLayout() {
-        if (state.zoneMode === 'poster') rebuildGeometry();
-        else renderCanvas(state.anim.progress);
-      }
 
       function bindEvents() {
         bindBrushEvents();
@@ -2879,12 +3068,12 @@
         document.getElementById('typoToggle').addEventListener('change', (e) => {
           state.typography.enabled = e.target.checked;
           updateTypographyControls();
-          updateTypographyLayout();
+          rebuildGeometry();
         });
         document.getElementById('typoModeSelect').addEventListener('change', (e) => {
           state.typography.mode = e.target.value;
           updateTypographyControls();
-          updateTypographyLayout();
+          rebuildGeometry();
         });
         document.getElementById('logoColorInput').addEventListener('input', (e) => {
           state.typography.logoColor = e.target.value;
@@ -2897,20 +3086,20 @@
         });
         document.getElementById('typoSubInput').addEventListener('input', (e) => {
           state.typography.subtitle = e.target.value;
-          updateTypographyLayout();
+          rebuildGeometry();
         });
         document.querySelectorAll('.typo-pos-btn').forEach(btn => {
           btn.addEventListener('click', () => {
             state.typography.position = btn.dataset.typoPos;
             updateTypographyControls();
-            updateTypographyLayout();
+            rebuildGeometry();
           });
         });
 
         // Interactive Epicenter Click on Sheet
         let markerTimer = null;
         document.getElementById('sheetFrame').addEventListener('click', (e) => {
-          if (state.brush.enabled || state.zoneMode === 'poster') return;
+          if (state.brush.enabled || state.zoneMode !== 'epicenter') return;
           const rect = e.currentTarget.getBoundingClientRect();
           const nx = clamp((e.clientX - rect.left) / rect.width, 0.08, 0.92);
           const ny = clamp((e.clientY - rect.top) / rect.height, 0.08, 0.92);
@@ -2923,9 +3112,6 @@
           clearTimeout(markerTimer);
           markerTimer = setTimeout(() => marker.classList.add('opacity-0'), 1100);
 
-          if (state.zoneMode !== 'epicenter') {
-            setZoneMode('epicenter');
-          }
           rebuildGeometry();
         });
 
@@ -3014,6 +3200,7 @@
         });
 
         window.addEventListener('resize', fitSheetToStage);
+        document.fonts?.addEventListener('loadingdone', () => renderCanvas(state.anim.progress));
       }
 
       /* ======================================================================
@@ -3025,6 +3212,7 @@
         bindEvents();
         updateTypographyControls();
         updateSeedDisplays();
+        setZoneMode(state.zoneMode);
         fitSheetToStage();
         rebuildGeometry();
         requestAnimationFrame(animTick);
