@@ -103,12 +103,20 @@
           <span id="particleCountBadge">0 geometrie</span>
         </div>
         <div class="flex items-center gap-2">
+          <button type="button" id="brushToggle" aria-pressed="false" aria-controls="brushControls" class="px-2 py-1 rounded border border-[#D6D6D2] bg-white text-[#161616] aria-pressed:bg-[#161616] aria-pressed:text-white cursor-pointer">Pennello</button>
           <span id="epicenterHint" class="text-[10px] text-[#666662] hidden sm:inline">Clicca sul foglio per spostare l'epicentro</span>
           <span id="recordingBadge" class="hidden items-center gap-1.5 px-2 py-0.5 rounded bg-[#FF5D38] text-white font-semibold text-[10px]">
             <span class="w-2 h-2 rounded-full bg-white rec-dot"></span>
             REC WEBM...
           </span>
         </div>
+      </div>
+      <div id="brushControls" hidden class="px-4 py-2 bg-[#F8F8F6] border-b border-[#D6D6D2] shrink-0 font-mono-tech text-[11px]">
+        <label class="inline-flex items-center gap-2 mr-3">
+          <span>Parametro</span>
+          <select id="brushEffect" class="px-1.5 py-1 rounded border border-[#D6D6D2] bg-white text-[#161616]"></select>
+        </label>
+        <button type="button" id="brushUndo" disabled class="px-2 py-1 rounded border border-[#D6D6D2] bg-white text-[#161616] cursor-pointer disabled:opacity-40">Annulla tratto</button>
       </div>
 
       <!-- Canvas Drafting Workspace -->
@@ -156,7 +164,7 @@
               <select id="animStyleSelect" class="bg-white border border-[#D6D6D2] rounded px-2 py-1 text-[11px] font-mono-tech text-[#161616] focus:outline-none focus:border-[#161616]">
                 <option value="param-logic">Logica Parametro</option>
                 <option value="pop-scale">Pop / Scala</option>
-                <option value="plotter-glitch">Plotter / Glitch</option>
+                <option value="plotter-glitch" selected>Plotter / Glitch</option>
                 <option value="wave">Onda Direzionale</option>
               </select>
             </div>
@@ -215,8 +223,8 @@
         <section class="pt-4 border-t border-[#D6D6D2]">
           <label class="block font-mono-tech text-[10px] font-semibold uppercase tracking-wider text-[#666662] mb-2">Sfondo Foglio</label>
           <div class="grid grid-cols-4 gap-1.5" id="bgPresetGrid">
-            <button data-bg="paper" class="bg-btn flex flex-col items-center gap-1 p-1.5 rounded border border-[#161616] bg-white cursor-pointer" title="Carta Tecnica #F1F1EF">
-              <span class="w-full h-5 rounded-sm border border-[#D6D6D2] bg-[#F1F1EF]"></span>
+            <button data-bg="paper" class="bg-btn flex flex-col items-center gap-1 p-1.5 rounded border border-[#161616] bg-white cursor-pointer" title="Carta Tecnica #EDEEE9">
+              <span class="w-full h-5 rounded-sm border border-[#D6D6D2] bg-[#EDEEE9]"></span>
               <span class="font-mono-tech text-[9px] uppercase">Carta</span>
             </button>
             <button data-bg="white" class="bg-btn flex flex-col items-center gap-1 p-1.5 rounded border border-[#D6D6D2] bg-white hover:border-[#161616] cursor-pointer" title="Bianco Puro #FFFFFF">
@@ -242,10 +250,12 @@
             <option value="epicenter" selected>Epicentro (Data Center)</option>
             <option value="frame">Cornice (Spazio Testo)</option>
             <option value="diagonal">Diagonale / Flusso</option>
+            <option value="poster">Poster</option>
           </select>
           <p id="zoneModeDesc" class="mt-1.5 text-[11px] text-[#666662] leading-snug">
             Ancora pennacchi, calore e onde attorno all'epicentro (clicca sul foglio per spostarlo).
           </p>
+          <button type="button" id="btnPosterPreset" class="mt-2 w-full px-2.5 py-2 rounded border border-[#D6D6D2] bg-white text-left text-xs font-mono-tech text-[#161616] hover:border-[#161616] cursor-pointer">Applica composizione di riferimento</button>
         </section>
 
         <!-- 4. Scala Globale & Seed -->
@@ -267,19 +277,31 @@
           </div>
         </section>
 
-        <!-- 5. Test Overlay Tipografico -->
+        <!-- 5. Titolo e logo -->
         <section class="pt-4 border-t border-[#D6D6D2]">
           <div class="flex items-center justify-between mb-2">
-            <span class="font-mono-tech text-[10px] font-semibold uppercase tracking-wider text-[#666662]">Test Overlay Tipografico</span>
+            <span class="font-mono-tech text-[10px] font-semibold uppercase tracking-wider text-[#666662]">Titolo e logo</span>
             <label class="inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="typoToggle" class="sr-only" checked />
+              <input type="checkbox" id="typoToggle" aria-label="Mostra titolo o logo sul foglio" class="sr-only" checked />
               <span class="toggle-pill"></span>
             </label>
           </div>
 
           <div id="typoControls" class="space-y-2 mt-2">
-            <input id="typoTitleInput" type="text" value="THE CLOUDED ISSUE" placeholder="Titolo..." class="w-full bg-white border border-[#D6D6D2] rounded px-2.5 py-1.5 text-xs font-semibold text-[#161616] focus:outline-none focus:border-[#161616]" />
-            <input id="typoSubInput" type="text" value="EDIZIONE 0 /// LACCHIARELLA" placeholder="Sottotitolo..." class="w-full bg-white border border-[#D6D6D2] rounded px-2.5 py-1.5 text-[11px] font-mono-tech text-[#161616] focus:outline-none focus:border-[#161616]" />
+            <select id="typoModeSelect" aria-label="Elemento del titolo" class="w-full bg-white border border-[#D6D6D2] rounded px-2.5 py-1.5 text-xs text-[#161616]">
+              <option value="logo" selected>Logo The Clouded Issue</option>
+              <option value="text">Titolo di testo</option>
+            </select>
+            <div id="logoColorControls">
+              <label class="flex items-center justify-between gap-2 text-xs text-[#161616]">
+                <span>Colore logo</span>
+                <input id="logoColorInput" type="color" value="#ff3319" class="h-7 w-10 cursor-pointer rounded border border-[#D6D6D2] bg-white" />
+              </label>
+            </div>
+            <div id="typoTitleControls" hidden>
+              <input id="typoTitleInput" type="text" value="THE CLOUDED ISSUE" aria-label="Titolo" placeholder="Titolo..." class="w-full bg-white border border-[#D6D6D2] rounded px-2.5 py-1.5 text-xs font-semibold text-[#161616] focus:outline-none focus:border-[#161616]" />
+            </div>
+            <input id="typoSubInput" type="text" value="EDIZIONE 0 /// LACCHIARELLA" aria-label="Sottotitolo" placeholder="Sottotitolo..." class="w-full bg-white border border-[#D6D6D2] rounded px-2.5 py-1.5 text-[11px] font-mono-tech text-[#161616] focus:outline-none focus:border-[#161616]" />
             <div class="grid grid-cols-3 gap-1 pt-0.5">
               <button data-typo-pos="center" class="typo-pos-btn py-1 text-[10px] font-mono-tech uppercase rounded border border-[#D6D6D2] bg-white text-[#161616] hover:border-[#161616] cursor-pointer">Centro</button>
               <button data-typo-pos="top-left" class="typo-pos-btn py-1 text-[10px] font-mono-tech uppercase rounded border border-[#D6D6D2] bg-white text-[#161616] hover:border-[#161616] cursor-pointer">Alto-SX</button>
@@ -326,6 +348,7 @@
   <!-- ========================================================================
        GENERATIVE ENGINE & STUDIO APPLICATION SCRIPT
        ======================================================================== -->
+  <script src="js/logo.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

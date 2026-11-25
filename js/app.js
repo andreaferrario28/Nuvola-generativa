@@ -2,7 +2,7 @@
       'use strict';
 
       /* ======================================================================
-         1. DEFINITIONS: 12 EFFECTS, CATEGORIES, SPATIAL LOGICS, FORMATS
+         1. DEFINITIONS: EFFECTS, CATEGORIES, SPATIAL LOGICS, FORMATS
          ====================================================================== */
 
       const SPATIAL_LOGICS = [
@@ -27,32 +27,32 @@
         { id: 'salute',   label: '04 / Salute e Vivibilità' }
       ];
 
-      // The 12 micro-geometries with exact palette colors and default behaviors
       const EFFECTS_CONFIG = [
         // ECONOMIA
         {
           id: 'valore-immobiliare',
           name: 'Valore immobiliare',
           category: 'economia',
-          color: '#4D7CFE',
-          shape: 'bar',
-          defaultLogic: 'urban-blocks',
-          assetPath: 'valore immobiliare.svg',
+          color: '#3371E2',
+          shape: 'diamond',
+          defaultLogic: 'property-grid',
+          fixedLogic: true,
           active: true,
           intensity: 62,
-          iconSvg: '<rect x="2" y="6" width="2.5" height="8" fill="#4D7CFE"/><rect x="6.5" y="2" width="2.5" height="12" fill="#4D7CFE"/><rect x="11" y="4.5" width="2.5" height="9.5" fill="#4D7CFE"/>'
+          iconSvg: '<polygon points="8,2 14,8 8,14 2,8" fill="#3371E2"/><circle cx="8" cy="8" r="1.3" fill="#16439C"/>'
         },
         {
           id: 'posti-di-lavoro',
           name: 'Posti di lavoro',
           category: 'economia',
-          color: '#0095B6',
-          shape: 'capsule',
-          defaultLogic: 'modular-grid',
-          assetPath: 'posti di lavoro.svg',
+          color: '#0099BC',
+          shape: 'job-circle',
+          defaultLogic: 'cluster-scatter',
+          fixedLogic: true,
+          maxDots: 81,
           active: false,
           intensity: 55,
-          iconSvg: '<circle cx="8" cy="8" r="5" fill="none" stroke="#0095B6" stroke-width="2"/>'
+          iconSvg: '<circle cx="8" cy="8" r="5" fill="#fff" stroke="#0099BC" stroke-width="2.6"/>'
         },
         {
           id: 'traffico',
@@ -61,7 +61,6 @@
           color: '#004E64',
           shape: 'triangle',
           defaultLogic: 'flow-paths',
-          assetPath: 'traffico.svg',
           active: true,
           intensity: 65,
           iconSvg: '<polygon points="8,2 14,13.5 2,13.5" fill="#004E64"/>'
@@ -69,16 +68,17 @@
 
         // AMBIENTE
         {
-          id: 'greenfield',
-          name: 'Greenfield',
+          id: 'consumo-suolo',
+          name: 'Consumo di suolo',
           category: 'ambiente',
-          color: '#62C37B',
           shape: 'cross-dot',
           defaultLogic: 'tessellation',
-          assetPath: 'campi.svg',
+          fixedLogic: true,
+          color: '#61C883',
+          brownfield: 0,
           active: false,
           intensity: 60,
-          iconSvg: '<path d="M4 2V6M2 4H6M12 2V6M10 4H14M4 10V14M2 12H6M12 10V14M10 12H14" stroke="#62C37B" stroke-width="1.6"/>'
+          iconSvg: '<path d="M8 2V14M2 8H14" stroke="currentColor" stroke-width="3.8"/>'
         },
         {
           id: 'flora-fauna',
@@ -86,23 +86,24 @@
           category: 'ambiente',
           color: '#008A4E',
           shape: 'hollow-circle',
-          defaultLogic: 'organic-scatter',
-          assetPath: 'fauna.svg',
+          defaultLogic: 'flora-scatter',
+          maxDots: 155,
           active: false,
           intensity: 55,
           iconSvg: '<circle cx="8" cy="8" r="5" fill="none" stroke="#008A4E" stroke-width="2"/>'
         },
         {
-          id: 'brownfield',
-          name: 'Brownfield',
+          id: 'falda',
+          name: 'Falda',
           category: 'ambiente',
-          color: '#634142',
-          shape: 'cross-dot',
-          defaultLogic: 'tessellation',
-          assetPath: 'brownfield.svg',
+          color: '#2CC6C6',
+          contamination: 50,
+          shape: 'aquifer-ribbon',
+          defaultLogic: 'water-traces',
+          fixedLogic: true,
           active: false,
           intensity: 60,
-          iconSvg: '<polygon points="8,1.5 14.5,8 8,14.5 1.5,8" fill="#634142"/>'
+          iconSvg: '<rect x="1" y="4.5" width="12" height="2" fill="#2CC6C6"/><rect x="3" y="8" width="12" height="2" fill="#740"/>'
         },
 
         // ENERGIA E SERVIZI
@@ -110,41 +111,36 @@
           id: 'tralicci',
           name: 'Tralicci',
           category: 'energia',
-          color: '#E3FF1A',
-          shape: 'plus',
-          defaultLogic: 'network-lines',
-          assetPath: 'elettricità.svg',
+          color: '#FFEC3E',
+          shape: 'pylon',
+          defaultLogic: 'branching-pylons',
+          fixedLogic: true,
           active: true,
-          intensity: 68,
-          iconSvg: '<line x1="2" y1="8" x2="14" y2="8" stroke="#161616" stroke-width="1" stroke-opacity="0.35"/><path d="M8 2.5V13.5M2.5 8H13.5" stroke="#B7CE00" stroke-width="2.4"/>'
+          intensity: 68
         },
         {
           id: 'pressione-rete',
           name: 'Pressione sulle case',
           category: 'energia',
-          color: '#F2D62B',
-          shape: 'zigzag',
-          defaultLogic: 'tension-arcs',
-          assetPath: 'pressione sulle case.svg',
-          mapAsset: true,
-          randomExcluded: true,
+          color: '#FFEC3E',
+          shape: 'house-fill',
+          defaultLogic: 'settlements',
+          fixedLogic: true,
           active: true,
           intensity: 60,
-          iconSvg: '<polyline points="1.5,11 5.5,4.5 9.5,11 14,4.5" fill="none" stroke="#D9BA00" stroke-width="2" stroke-linecap="square"/>'
+          iconSvg: '<path d="M2 3h6v2h6v7h-4v2H2z" fill="#FFEC3E"/>'
         },
         {
           id: 'bollette',
           name: 'Bollette',
           category: 'energia',
-          color: '#D9A700',
-          shape: 'hollow-rect',
-          defaultLogic: 'accumulation',
-          assetPath: 'bollette.svg',
-          mapAsset: true,
-          randomExcluded: true,
+          color: '#E0B500',
+          shape: 'house-outline',
+          defaultLogic: 'settlements',
+          fixedLogic: true,
           active: true,
-          intensity: 58,
-          iconSvg: '<rect x="3.5" y="2" width="9" height="12" fill="none" stroke="#D9A700" stroke-width="2"/>'
+          intensity: 60,
+          iconSvg: '<path d="M2 3h6v2h6v7h-4v2H2z" fill="none" stroke="#E0B500" stroke-width="1.5"/>'
         },
 
         // SALUTE E VIVIBILITÀ
@@ -152,39 +148,69 @@
           id: 'emissioni',
           name: 'Emissioni',
           category: 'salute',
-          color: '#FFA6EA',
+          color: '#FFA4E3',
           shape: 'square',
-          defaultLogic: 'plume',
-          assetPath: 'emissioni.svg',
+          defaultLogic: 'emission-scatter',
+          fixedLogic: true,
           active: true,
           intensity: 72,
-          iconSvg: '<rect x="2.5" y="2.5" width="11" height="11" fill="#FFA6EA"/>'
+          iconSvg: '<rect x="2.5" y="2.5" width="11" height="11" fill="#FFA4E3"/>'
         },
         {
           id: 'calore',
           name: 'Calore',
           category: 'salute',
-          color: '#FF5D38',
+          color: '#FF5F40',
           shape: 'halftone',
           defaultLogic: 'heat-island',
-          assetPath: 'calore.svg',
+          fixedLogic: true,
+          mergeDots: false,
           active: true,
           intensity: 76,
-          iconSvg: '<circle cx="5" cy="5" r="2.2" fill="#FF5D38"/><circle cx="11" cy="5" r="1.6" fill="#FF5D38"/><circle cx="5" cy="11" r="1.6" fill="#FF5D38"/><circle cx="11" cy="11" r="2.2" fill="#FF5D38"/>'
+          iconSvg: '<circle cx="4.5" cy="4.5" r="2.5" fill="#FF5F40"/><circle cx="11.5" cy="4.5" r="2.5" fill="#FF5F40"/><circle cx="4.5" cy="11.5" r="2.5" fill="#FF5F40"/><circle cx="11.5" cy="11.5" r="2.5" fill="#FF5F40"/>'
         },
         {
           id: 'rumore',
           name: 'Rumore',
           category: 'salute',
-          color: '#9B236E',
-          shape: 'wave',
-          defaultLogic: 'isophones',
-          assetPath: 'rumore.svg',
+          color: '#161616',
+          defaultLogic: 'diagonal-bands',
+          fixedLogic: true,
           active: false,
           intensity: 62,
-          iconSvg: '<line x1="2" y1="4" x2="14" y2="4" stroke="#9B236E" stroke-width="1.8"/><line x1="2" y1="8" x2="11" y2="8" stroke="#9B236E" stroke-width="1.8"/><line x1="2" y1="12" x2="14" y2="12" stroke="#9B236E" stroke-width="1.8"/>'
+          iconSvg: '<path d="M1 8L11 2M2 12L14 5M5 14L15 8" stroke="#161616"/><path d="M4 11L10 7M8 13L15 8.8" stroke="#161616" stroke-width="2.4"/>'
         }
       ];
+
+      // Motivi vettoriali nello spazio locale del modulo, condivisi da Canvas e SVG.
+      const HOUSE_FOOTPRINTS = [
+        'M-.5 -.45H-.04V-.24H.5V.31H.16V.46H-.5Z',
+        'M-.48 -.43H.18V-.16H.47V.44H-.48Z',
+        'M-.46 -.37H.46V.36H-.46Z',
+        'M-.5 -.48H.5V.43H.11V.07H-.11V.43H-.5Z',
+        'M-.51 -.27L-.17 -.27V-.47H.34V-.12H.49V.45H-.51Z',
+        'M-.46 -.25L-.08 -.48L.45 -.30V.42H-.46Z'
+      ].map(d => [{ d, path: new Path2D(d) }]);
+
+      // I cinque rettangoli di elettricità.svg, normalizzati al viewBox originale.
+      const PYLON_MOTIF = [
+        { d: 'M-0.165862 -0.222574L-0.125535 -0.500369L0.262886 -0.443981L0.222558 -0.166187Z', fill: '#FFEC3E' },
+        { d: 'M-0.262594 0.443731L-0.222266 0.165936L0.166155 0.222324L0.125827 0.500119Z', fill: '#FFEC3E' },
+        { d: 'M-0.499981 0.125712L-0.443593 -0.262709L-0.165798 -0.222381L-0.222186 0.166040Z', fill: '#FFEC3E' },
+        { d: 'M0.166048 0.222444L0.222436 -0.165977L0.500231 -0.125649L0.443843 0.262771Z', fill: '#FFEC3E' },
+        { d: 'M-0.222121 0.165911L-0.165734 -0.222509L0.222687 -0.166122L0.166299 0.222299Z', fill: '#E3FF15' }
+      ];
+      const VECTOR_MOTIFS = {
+        pylon: PYLON_MOTIF
+      };
+      for (const motif of Object.values(VECTOR_MOTIFS)) {
+        for (const stroke of motif) stroke.path = new Path2D(stroke.d);
+      }
+
+      function getVectorMotif(item) {
+        if (item.house !== undefined) return HOUSE_FOOTPRINTS[item.house];
+        return VECTOR_MOTIFS[item.shape];
+      }
 
       const FORMATS = {
         a4:     { width: 900,  height: 1200, label: '900 × 1200 px (3:4)' },
@@ -194,7 +220,7 @@
       };
 
       const BACKGROUNDS = {
-        paper:       { hex: '#F1F1EF', ink: '#161616', subInk: '#555550' },
+        paper:       { hex: '#EDEEE9', ink: '#555555', subInk: '#555555' },
         white:       { hex: '#FFFFFF', ink: '#161616', subInk: '#555550' },
         dark:        { hex: '#0E0E10', ink: '#F1F1EF', subInk: '#A0A09A' },
         transparent: { hex: null,      ink: '#161616', subInk: '#555550' }
@@ -204,8 +230,18 @@
         free:      'Diffusione libera su tutta la superficie del foglio secondo le logiche di ciascun parametro.',
         epicenter: 'Ancora pennacchi, calore e onde attorno all\'epicentro (clicca sul foglio per spostarlo).',
         frame:     'Mantiene libera un\'area centrale pulita per ospitare titoli, testi o elementi grafici.',
-        diagonal:  'Concentra le micro-geometrie lungo un asse dinamico diagonale attraverso il foglio.'
+        diagonal:  'Concentra le micro-geometrie lungo un asse dinamico diagonale attraverso il foglio.',
+        poster:    'Distribuisce gruppi e segni isolati in modo asimmetrico, lasciando spazio al logo.'
       };
+
+      const LOGO_PATHS = CLOUD_EDITION_LOGO.paths.map(path => new Path2D(path));
+      const HALFTONE_RADIUS_RATIO = 0.52;
+      const DIAMOND_RADIUS_RATIO = 0.55;
+      const DIAMOND_DOT_COLOR = '#16439C';
+      const DIAMOND_DOT_RADIUS_RATIO = 0.12;
+      const DEFAULT_DISTRIBUTION = 50;
+      const HOUSE_LAYER_ID = 'pressione-rete';
+      const SAFE_FRAME = { left: 0.22, right: 0.78, top: 0.25, bottom: 0.75 };
 
       /* ======================================================================
          2. APPLICATION STATE
@@ -220,19 +256,21 @@
         globalScale: 1.0,
         typography: {
           enabled: true,
+          mode: 'logo',
+          logoColor: CLOUD_EDITION_LOGO.color,
           title: 'THE CLOUDED ISSUE',
           subtitle: 'EDIZIONE 0 /// LACCHIARELLA',
           position: 'bottom-left'
         },
-        effects: EFFECTS_CONFIG.map(e => ({ ...e, logic: e.defaultLogic })),
-        // Generated layers: Map<effectId, { items: [], lines: [] }>
+        effects: EFFECTS_CONFIG.map(e => ({
+          ...e, logic: e.defaultLogic, distribution: DEFAULT_DISTRIBUTION
+        })),
         layers: new Map(),
-        fixedAssets: [],
-        totalPrimitives: 0,
+        brush: { enabled: false, effectId: 'calore', strokes: [] },
         // Motion engine
         anim: {
           mode: 'static',     // 'static' | 'in' | 'out' | 'loop'
-          style: 'param-logic',
+          style: 'plotter-glitch',
           speed: 1.0,
           progress: 1.0,      // 0..1
           phase: 'hold',      // for loop: 'in' | 'hold' | 'out' | 'pause'
@@ -241,23 +279,6 @@
           isRecording: false
         }
       };
-
-      const effectAssetCache = new Map();
-
-      function preloadEffectAssets() {
-        EFFECTS_CONFIG.forEach(effect => {
-          if (!effect.assetPath) return;
-          const src = `Assets/Effetti/${encodeURI(effect.assetPath)}`;
-          const image = new Image();
-          image.decoding = 'async';
-          image.onload = () => {
-            effectAssetCache.set(effect.assetPath, image);
-            renderCanvas(state.anim.progress);
-          };
-          image.onerror = () => console.error(`Effetto SVG non trovato: ${effect.assetPath}`);
-          image.src = src;
-        });
-      }
 
       /* ======================================================================
          3. DETERMINISTIC PRNG & 2D VALUE NOISE
@@ -306,7 +327,8 @@
 
       function isInsideSafeFrame(nx, ny) {
         // Keeps a clean central box when zoneMode === 'frame'
-        return nx > 0.22 && nx < 0.78 && ny > 0.25 && ny < 0.75;
+        return nx > SAFE_FRAME.left && nx < SAFE_FRAME.right &&
+          ny > SAFE_FRAME.top && ny < SAFE_FRAME.bottom;
       }
 
       function diagonalWeight(nx, ny) {
@@ -348,6 +370,9 @@
           if (side === 2) return { x: 0.12, y: 0.15 + rng() * 0.7 };
           return { x: 0.88, y: 0.15 + rng() * 0.7 };
         }
+        if (state.zoneMode === 'poster') {
+          return { x: 0.14 + rng() * 0.72, y: 0.10 + rng() * 0.70 };
+        }
         return {
           x: 0.18 + rng() * 0.64,
           y: 0.18 + rng() * 0.64
@@ -358,6 +383,80 @@
         return Math.max(min, Math.min(max, v));
       }
 
+      function createParcelMap(seed, intensity) {
+        const spacing = 0.33 - intensity * 0.079;
+        const sites = [];
+        for (let row = -6; row <= 6; row++) {
+          for (let col = -6; col <= 6; col++) {
+            sites.push({
+              x: (col + (hash2D(col, row, seed) - 0.5) * 0.94) * spacing * 1.14,
+              y: (row + (hash2D(col, row, seed + 11) - 0.5) * 0.94) * spacing,
+              weight: (hash2D(col, row, seed + 23) - 0.5) * spacing ** 2 * 0.52,
+              lane: spacing * (0.055 + hash2D(col, row, seed + 41) * 0.075)
+            });
+          }
+        }
+
+        return (u, v) => {
+          // Piega i confini senza spostare o deformare i moduli del retino.
+          const x = u + (fbm2D(u * 4.8 + 8, v * 4.4 + 5, seed + 83) - 0.5) * 0.22;
+          const y = v + (fbm2D(u * 4.6 + 3, v * 4.9 + 9, seed + 97) - 0.5) * 0.20;
+          let nearest = -1;
+          let minDistance = Infinity;
+          for (let i = 0; i < sites.length; i++) {
+            const site = sites[i];
+            const distance = (x - site.x) ** 2 + (y - site.y) ** 2 - site.weight;
+            if (distance < minDistance) {
+              nearest = i;
+              minDistance = distance;
+            }
+          }
+          const winner = sites[nearest];
+          for (let i = 0; i < sites.length; i++) {
+            if (i === nearest) continue;
+            const site = sites[i];
+            const difference = (x - site.x) ** 2 + (y - site.y) ** 2 - site.weight - minDistance;
+            const siteDistanceSquared = (winner.x - site.x) ** 2 + (winner.y - site.y) ** 2;
+            if (difference ** 2 < (winner.lane + site.lane) ** 2 * siteDistanceSquared) return null;
+          }
+          return nearest;
+        };
+      }
+
+      function isInsideLogo(x, y, logo) {
+        if (!logo) return false;
+        const u = (x - logo.x) / logo.width;
+        const v = (y - logo.y) / logo.height;
+        return (v > -0.025 && v < 0.37 && u > 0.13 && u < 0.60) ||
+          (v >= 0.24 && v < 0.69 && u > 0.005 && u < 0.90) ||
+          (v >= 0.65 && v < 1.015 && u > 0.45 && u < 0.99);
+      }
+
+      function getClusterCenters(rng, count, spread) {
+        const focal = getFocalPoint(rng, 0.12);
+        const phase = rng() * Math.PI * 2;
+        return Array.from({ length: count }, (_, i) => {
+          const angle = phase + i * Math.PI * 2 / count;
+          const jitter = (rng() - 0.5) * 0.09;
+          if (state.zoneMode === 'frame') {
+            const side = i % 4;
+            const along = clamp(0.5 + Math.sin(angle) * 0.34 + jitter, 0.10, 0.90);
+            return [
+              { x: along, y: 0.14 }, { x: 0.87, y: along },
+              { x: along, y: 0.86 }, { x: 0.13, y: along }
+            ][side];
+          }
+          if (state.zoneMode === 'diagonal') {
+            const x = 0.15 + i * 0.70 / (count - 1) + jitter;
+            return { x, y: 1 - x + Math.sin(angle) * 0.09 };
+          }
+          return {
+            x: clamp(focal.x, 0.34, 0.66) + Math.cos(angle) * (spread + jitter),
+            y: clamp(focal.y, 0.34, 0.66) + Math.sin(angle) * (spread + jitter)
+          };
+        });
+      }
+
       /* ======================================================================
          5. SPATIAL GENERATORS (12 DISTINCT ALGORITHMIC LOGICS)
          ====================================================================== */
@@ -365,29 +464,24 @@
       function generateEffectLayer(effect, W, H, effectIndex) {
         const items = [];
         const lines = [];
-        if (effect.mapAsset) {
-          return { items, lines };
-        }
-        const intensity = effect.intensity / 100; // 0..1
-        if (!effect.active || intensity <= 0.01) {
-          if (effect.assetPath) {
-            items.forEach(item => {
-              item.shape = 'asset';
-              item.assetPath = effect.assetPath;
-            });
-          }
-
+        const strength = effect.intensity / 100;
+        if (!effect.active || strength <= 0.01) {
           return { items, lines };
         }
 
+        // Per i pallini, la distribuzione di base è indipendente dal cursore.
+        const intensity = effect.maxDots ? 0.55 : strength;
         const subSeed = (state.seed * 31 + (effectIndex + 1) * 7919) >>> 0;
         const rng = createRNG(subSeed);
         const minDim = Math.min(W, H);
         const baseUnit = (minDim / 90) * state.globalScale;
         const logic = effect.logic;
+        const color = effect.color;
+        const poster = state.zoneMode === 'poster';
+        const logo = poster && state.typography.enabled ? getTypographyLayout(W, H).logo : null;
 
         // ------------------------------------------------------------------
-        // 1. URBAN-BLOCKS (Valore immobiliare: clustered vertical bars)
+        // 1. URBAN-BLOCKS (clustered vertical bars)
         // ------------------------------------------------------------------
         if (logic === 'urban-blocks') {
           const numClusters = Math.max(1, Math.round(1 + intensity * 3.5));
@@ -404,7 +498,7 @@
             for (let r = 0; r < rows; r++) {
               for (let k = 0; k < cols; k++) {
                 if (rng() < 0.12) continue;
-                const lx = (k - cols / 2) * spacingX;
+                const lx = (k - (cols - 1) / 2 + (r % 2 ? 0.5 : 0)) * spacingX;
                 const ly = (r - rows / 2) * spacingY;
                 const x = center.x * W + lx * cosR - ly * sinR;
                 const y = center.y * H + lx * sinR + ly * cosR;
@@ -412,7 +506,7 @@
                 if (!passesZoneFilter(nx, ny, rng, false)) continue;
 
                 const barH = baseUnit * (1.2 + fbm2D(k * 0.35, r * 0.8, subSeed + c) * 3.6);
-                const barW = baseUnit * 0.62;
+                const barW = barH * (6.54 / 34.74);
                 const order = clamp((c / numClusters) * 0.4 + (k / cols) * 0.45 + (r / rows) * 0.15, 0, 1);
 
                 items.push({
@@ -422,7 +516,7 @@
                   w: barW,
                   h: barH,
                   rot: rotBlock,
-                  color: effect.color,
+                  color,
                   order
                 });
               }
@@ -431,7 +525,7 @@
         }
 
         // ------------------------------------------------------------------
-        // 2. MODULAR-GRID (Posti di lavoro: structured modular capsules)
+        // 2. MODULAR-GRID (structured modular placement)
         // ------------------------------------------------------------------
         else if (logic === 'modular-grid') {
           const stepX = baseUnit * 3.1;
@@ -468,16 +562,74 @@
                 size: baseUnit * 0.9,
                 w, h,
                 rot: 0,
-                color: effect.color,
+                color,
                 order
               });
             }
           }
         }
 
-        // ------------------------------------------------------------------
+        else if (logic === 'cluster-scatter') {
+          const origin = getFocalPoint(rng, 0.35);
+          const radius = minDim * 0.245;
+          const direction = rng() * Math.PI * 2;
+          const centers = Array.from({ length: 3 }, (_, cluster) => {
+            const axis = direction + cluster * Math.PI * 2 / 3;
+            return {
+              x: origin.x * W + Math.cos(axis) * radius * 0.72,
+              y: origin.y * H + Math.sin(axis) * radius * 0.72
+            };
+          });
+          for (let i = 0; items.length < effect.maxDots && i < effect.maxDots * 32; i++) {
+            const center = centers[i % centers.length];
+            const angle = rng() * Math.PI * 2;
+            const distance = Math.sqrt(rng()) * radius * 0.6;
+            const x = center.x + Math.cos(angle) * distance;
+            const y = center.y + Math.sin(angle) * distance;
+            if (!passesZoneFilter(x / W, y / H, rng, false)) continue;
+            if (items.some(dot => Math.hypot(x - dot.x, y - dot.y) < baseUnit * 1.08)) continue;
+            items.push({ shape: effect.shape, x, y, color, order: distance / radius });
+          }
+        }
+
+        else if (logic === 'water-traces') {
+          const frame = state.zoneMode === 'frame';
+          const anchor = getFocalPoint(rng, 0.18);
+          const direction = frame ? 0 : state.zoneMode === 'diagonal'
+            ? -Math.PI / 4 : (rng() - 0.5) * 1.68 - 0.27;
+          const dx = Math.cos(direction);
+          const dy = Math.sin(direction);
+          const span = minDim * (0.47 + intensity * 0.47);
+          const width = Math.min(minDim * 0.077, Math.max(22, baseUnit * 4.4));
+          const separation = Math.max(width * 3.35, minDim * 0.145);
+          const segments = Math.ceil(span / Math.max(14, width * 0.60));
+
+          for (let trace = 0; trace < 2; trace++) {
+            const phase = rng() * Math.PI * 2;
+            const length = span * (0.87 + rng() * 0.13);
+            const upper = [];
+            const lower = [];
+            for (let i = 0; i <= segments; i++) {
+              const t = i / segments;
+              const along = (t - 0.5 + (i > 0 && i < segments ? (rng() - 0.5) * 0.64 / segments : 0)) * length;
+              const across = (frame ? 0 : (trace - 0.5) * separation)
+                + Math.sin(t * 5.8 + phase) * width * 0.63 + (rng() - 0.5) * width * 0.94;
+              const left = across - width * (0.30 + rng() * 0.26);
+              const right = across + width * (0.30 + rng() * 0.26);
+              upper.push({ x: along * dx - left * dy, y: along * dy + left * dx });
+              lower.push({ x: along * dx - right * dy, y: along * dy + right * dx });
+            }
+            const points = upper.concat(lower.reverse());
+            const bounds = getPointBounds(points);
+            const x = clamp((frame ? 0.5 : anchor.x) * W, W * 0.026 - bounds.left, W * 0.974 - bounds.right);
+            const y = clamp((frame ? (trace === 0 ? 0.133 : 0.867) : anchor.y) * H,
+              H * 0.027 - bounds.top, H * 0.973 - bounds.bottom);
+            const ribbon = createAquiferRibbon(points, bounds, width / 4.8, effect.contamination, subSeed + trace * 281);
+            items.push({ shape: effect.shape, x, y, color, size: width, order: trace * 0.26, ribbon });
+          }
+        }
+
         // 3. FLOW-PATHS (Traffico: triangles aligned along curved trajectories)
-        // ------------------------------------------------------------------
         else if (logic === 'flow-paths') {
           const numPaths = Math.max(1, Math.round(1 + intensity * 4.5));
           for (let p = 0; p < numPaths; p++) {
@@ -504,10 +656,21 @@
             }
 
             const steps = Math.round(18 + intensity * 38);
+            const reach = 0.29 + intensity * 0.71;
+            if (state.zoneMode === 'frame') {
+              const side = Math.floor(rng() * 4);
+              const alongHorizontalEdge = side % 2 === 0;
+              const margin = side < 2 ? 0.03 : 0.78;
+              for (const point of [p0, p1, p2, p3]) {
+                if (alongHorizontalEdge) point.y = margin * H + point.y * 0.19;
+                else point.x = margin * W + point.x * 0.19;
+              }
+            }
             for (let i = 0; i < steps; i++) {
               const t = i / (steps - 1);
-              const pt = cubicBezier(p0, p1, p2, p3, t);
-              const tang = cubicBezierTangent(p0, p1, p2, p3, t);
+              const along = 0.5 + (t - 0.5) * reach;
+              const pt = cubicBezier(p0, p1, p2, p3, along);
+              const tang = cubicBezierTangent(p0, p1, p2, p3, along);
               const nx = pt.x / W, ny = pt.y / H;
               if (state.zoneMode === 'frame' && isInsideSafeFrame(nx, ny)) continue;
               if (nx < 0.02 || nx > 0.98 || ny < 0.02 || ny > 0.98) continue;
@@ -521,7 +684,7 @@
                 w: baseUnit,
                 h: baseUnit,
                 rot: angle,
-                color: effect.color,
+                color,
                 order: t
               });
             }
@@ -529,16 +692,21 @@
         }
 
         // ------------------------------------------------------------------
-        // 4. TESSELLATION (Greenfield: organic polygon filled with ortho grid)
+        // 4. TESSELLATION (organic polygon filled with an orthogonal grid)
         // ------------------------------------------------------------------
         else if (logic === 'tessellation') {
           const anchor = getFocalPoint(rng, 0.35);
-          const isCrossGrid = effect.assetPath === 'campi.svg' || effect.assetPath === 'brownfield.svg';
-          const step = isCrossGrid ? baseUnit * 1.15 : baseUnit * 1.45;
-          const radX = (0.16 + intensity * 0.24) * W;
-          const radY = (0.16 + intensity * 0.24) * H;
+          const soil = effect.brownfield !== undefined;
+          const step = baseUnit * (soil ? 1.06 : 1.45);
+          const fields = new Map();
+          const parcelAt = soil ? createParcelMap(subSeed, intensity) : null;
+          const radX = (0.10 + intensity * 0.30) * W;
+          const radY = (0.10 + intensity * 0.28) * H;
           const cx = anchor.x * W;
           const cy = anchor.y * H;
+          const axis = (rng() - 0.5) * 1.3;
+          const cos = Math.cos(axis);
+          const sin = Math.sin(axis);
 
           const startX = Math.max(step, Math.floor((cx - radX * 1.3) / step) * step);
           const endX   = Math.min(W - step, cx + radX * 1.3);
@@ -553,21 +721,56 @@
               const dx = (x - cx) / radX;
               const dy = (y - cy) / radY;
               const nVal = fbm2D(nx * 5.5, ny * 5.5, subSeed);
-              const dist = Math.hypot(dx, dy) + (nVal - 0.5) * 0.75;
-              if (dist > 0.95) continue;
+              const u = dx * cos - dy * sin;
+              const v = dx * sin + dy * cos;
+              const dist = Math.max(Math.abs(u), Math.abs(v)) + (nVal - 0.5) * 0.55;
+              const boundary = soil ? 0.92 + (fbm2D(u * 3.1 + 9, v * 3.3 + 7, subSeed + 53) - 0.5) * 0.55 : 0.95;
+              if (dist > boundary) continue;
+              const field = parcelAt?.(u, v);
+              if (soil && field === null) continue;
 
               const order = clamp(((x - startX) / (endX - startX + 1)) * 0.5 + ((y - startY) / (endY - startY + 1)) * 0.5, 0, 1);
-              items.push({
-                shape: effect.shape,
-                x, y,
-                size: isCrossGrid ? step : baseUnit * 0.72,
-                w: isCrossGrid ? step : baseUnit * 0.72,
-                h: isCrossGrid ? step : baseUnit * 0.72,
-                rot: 0,
-                color: effect.color,
-                order
-              });
+              const item = {
+                shape: effect.shape, x, y,
+                size: soil ? step * 0.83 : baseUnit * 0.72,
+                w: baseUnit * 0.72, h: baseUnit * 0.72, rot: 0, color, order
+              };
+              if (soil) {
+                if (!fields.has(field)) fields.set(field, { rank: hash2D(field, 37, subSeed), items: [] });
+                fields.get(field).items.push(item);
+              }
+              items.push(item);
             }
+          }
+          if (soil) {
+            const brownCount = Math.round(fields.size * effect.brownfield / 100);
+            const ranked = [...fields.values()].sort((a, b) => a.rank - b.rank);
+            for (const field of ranked.slice(0, brownCount)) {
+              for (const item of field.items) item.color = '#634142';
+            }
+          }
+        }
+
+        else if (logic === 'flora-scatter') {
+          const focal = state.zoneMode === 'epicenter' ? state.epicenter : { x: 0.50, y: 0.50 };
+          const spacing = baseUnit * (poster ? 1.95 : 1);
+          for (let attempt = 0; items.length < effect.maxDots && attempt < effect.maxDots * 32; attempt++) {
+            const nx = 0.025 + rng() * 0.95;
+            const ny = 0.025 + rng() * 0.95;
+            if (!passesZoneFilter(nx, ny, rng, true)) continue;
+            const distance = Math.hypot(nx - focal.x, ny - focal.y);
+            const radial = clamp(distance / (poster ? 0.62 : 0.51), 0, 1);
+            const grain = fbm2D(nx * 7, ny * 7, subSeed);
+            const border = poster ? 0.40 + 0.60 * Math.abs(nx - 0.5) * 2 : 1;
+            if (rng() > (0.12 + radial ** 1.35 * 0.88) * (0.25 + grain * 0.75) * border) continue;
+            const x = nx * W;
+            const y = ny * H;
+            if (isInsideLogo(x, y, logo)) continue;
+            if (items.some(dot => Math.hypot(x - dot.x, y - dot.y) < spacing)) continue;
+            items.push({
+              shape: effect.shape, x, y, color, order: radial,
+              size: baseUnit, w: baseUnit, h: baseUnit, rot: 0
+            });
           }
         }
 
@@ -575,35 +778,45 @@
         // 5. ORGANIC-SCATTER (Flora e fauna: avoids epicenter, clusters near edges)
         // ------------------------------------------------------------------
         else if (logic === 'organic-scatter') {
-          const count = Math.round(25 + intensity * 130);
+          const count = effect.maxDots || Math.round(25 + intensity * 130);
           const ex = state.epicenter.x;
           const ey = state.epicenter.y;
+          const radius = 0.19 + intensity * 0.47;
+          const center = state.zoneMode === 'epicenter'
+            ? pointOnEdge(Math.floor(rng() * 4), rng, 1, 1)
+            : getFocalPoint(rng);
           let attempts = 0;
 
-          while (items.length < count && attempts < count * 8) {
+          const maxAttempts = count * (effect.maxDots ? 24 : 8);
+          while (items.length < count && attempts < maxAttempts) {
             attempts++;
-            const nx = 0.04 + rng() * 0.92;
-            const ny = 0.04 + rng() * 0.92;
+            const angle = rng() * Math.PI * 2;
+            const distance = Math.sqrt(rng()) * radius;
+            const nx = center.x + Math.cos(angle) * distance;
+            const ny = center.y + Math.sin(angle) * distance;
             if (!passesZoneFilter(nx, ny, rng, true)) continue;
 
             // Repulsion from epicenter
             const dCenter = Math.hypot(nx - ex, ny - ey);
-            if (dCenter < 0.22 && rng() < 0.88) continue;
+            if (state.zoneMode === 'epicenter' && dCenter < 0.22 && rng() < 0.88) continue;
 
             // Prefer clustered organic patches via fbm
             const cluster = fbm2D(nx * 4.5, ny * 4.5, subSeed);
             if (cluster < 0.42 && rng() < 0.75) continue;
 
+            const x = nx * W;
+            const y = ny * H;
+            if (effect.maxDots && items.some(dot => Math.hypot(x - dot.x, y - dot.y) < baseUnit)) continue;
             const order = clamp(1 - dCenter * 1.15, 0, 1);
             items.push({
               shape: effect.shape,
-              x: nx * W,
-              y: ny * H,
+              x,
+              y,
               size: baseUnit * (0.65 + rng() * 0.65),
               w: baseUnit,
               h: baseUnit,
               rot: 0,
-              color: effect.color,
+              color,
               order
             });
           }
@@ -644,7 +857,7 @@
                 w: baseUnit * 0.76,
                 h: baseUnit * 0.76,
                 rot: 0,
-                color: effect.color,
+                color,
                 order
               });
             }
@@ -652,7 +865,7 @@
         }
 
         // ------------------------------------------------------------------
-        // 7. NETWORK-LINES (Tralicci: straight transmission lines + sharp '+' nodes)
+        // 7. NETWORK-LINES
         // ------------------------------------------------------------------
         else if (logic === 'network-lines') {
           const numLines = Math.max(1, Math.round(1 + intensity * 4));
@@ -662,6 +875,18 @@
               const off = (rng() - 0.5) * 0.35;
               x1 = (0.03 + off) * W; y1 = (0.97 + off) * H;
               x2 = (0.97 + off) * W; y2 = (0.03 + off) * H;
+            } else if (state.zoneMode === 'frame') {
+              const side = Math.floor(rng() * 4);
+              const inset = () => (side < 2 ? 0.04 + rng() * 0.12 : 0.84 + rng() * 0.12);
+              const start = 0.05 + rng() * 0.13;
+              const end = 0.82 + rng() * 0.13;
+              if (side % 2 === 0) {
+                x1 = start * W; y1 = inset() * H;
+                x2 = end * W; y2 = inset() * H;
+              } else {
+                x1 = inset() * W; y1 = start * H;
+                x2 = inset() * W; y2 = end * H;
+              }
             } else if (state.zoneMode === 'epicenter' && l === 0) {
               const ang = (rng() * Math.PI);
               const cx = state.epicenter.x * W;
@@ -679,9 +904,10 @@
 
             // Clip endpoints softly inside sheet
             const nodes = Math.round(5 + intensity * 9);
+            const reach = 0.30 + intensity * 0.70;
             let prev = null;
             for (let i = 0; i <= nodes; i++) {
-              const t = i / nodes;
+              const t = 0.5 + (i / nodes - 0.5) * reach;
               const x = x1 + (x2 - x1) * t;
               const y = y1 + (y2 - y1) * t;
               const nx = x / W, ny = y / H;
@@ -698,7 +924,7 @@
                 lines.push({
                   x1: prev.x, y1: prev.y,
                   x2: x, y2: y,
-                  color: effect.color,
+                  color,
                   strokeWidth: Math.max(1.1, baseUnit * 0.14),
                   order: t
                 });
@@ -711,7 +937,7 @@
                 w: baseUnit * 1.15,
                 h: baseUnit * 1.15,
                 rot: 0,
-                color: effect.color,
+                color,
                 order: t
               });
               prev = { x, y };
@@ -719,18 +945,133 @@
           }
         }
 
-        // ------------------------------------------------------------------
-        // 8. TENSION-ARCS (Pressione sulla rete: radiating/bridging zig-zag bands)
-        // ------------------------------------------------------------------
+        else if (logic === 'branching-pylons') {
+          const frame = state.zoneMode === 'frame';
+          const layoutAngle = frame ? 0 : state.zoneMode === 'diagonal' ? -Math.PI / 5 : (rng() - 0.5) * Math.PI * 0.68;
+          const cos = Math.cos(layoutAngle);
+          const sin = Math.sin(layoutAngle);
+          const anchor = getFocalPoint(rng, 0.12);
+          const centerX = frame ? 0.5 : clamp(anchor.x, 0.44, 0.56);
+          const centerY = frame ? 0.5 : clamp(anchor.y, 0.44, 0.56);
+          const fit = frame ? 1 : 0.86;
+          const nodeSize = Math.min(baseUnit * 1.15, minDim * 0.022);
+          const strokeWidth = Math.max(1.5, baseUnit * 0.18);
+          const trunks = [[], []];
+          const edges = [];
+
+          function addEdge(a, b) {
+            a.degree++;
+            b.degree++;
+            edges.push({ a, b });
+            lines.push({
+              x1: a.x, y1: a.y, x2: b.x, y2: b.y, color, strokeWidth, opacity: 1, order: b.order
+            });
+          }
+
+          trunks.forEach((nodes, tree) => {
+            const band = (tree === 0 ? -1 : 1) * (frame ? 0.35 : 0.18);
+            const drift = (rng() - 0.5) * 0.14;
+            const count = 6 + Math.floor(rng() * 3);
+            for (let i = 0; i < count; i++) {
+              const t = i / (count - 1);
+              const along = (t - 0.5) * (0.65 + rng() * 0.10);
+              const across = band + (rng() - 0.5) * (frame ? 0.080 : 0.145) + (t - 0.5) * drift;
+              const node = {
+                x: W * (centerX + fit * (along * cos - across * sin)),
+                y: H * (centerY + fit * (along * sin + across * cos)),
+                degree: 0, order: 0.08 + t * 0.46, trunk: true
+              };
+              if (i) addEdge(nodes[i - 1], node);
+              nodes.push(node);
+            }
+          });
+
+          // I rami possono partire dalla dorsale o da un nodo già cresciuto.
+          // Ogni nuovo segmento deve avere spazio libero in entrambe le reti.
+          const target = 7 + Math.floor(intensity * 57);
+          let added = 0;
+          for (let attempt = 0; attempt < target * 36 && added < target; attempt++) {
+            const tree = attempt % 2;
+            const network = trunks[tree];
+            const root = network[Math.floor(rng() * network.length)];
+            if (root.degree >= 3) continue;
+            const angle = rng() * Math.PI * 2;
+            const length = minDim * (0.042 + rng() * 0.14);
+            const tip = {
+              x: root.x + Math.cos(angle) * length,
+              y: root.y + Math.sin(angle) * length,
+              degree: 0, order: 0.43 + rng() * 0.52
+            };
+            if (tip.x < W * 0.045 || tip.x > W * 0.955 || tip.y < H * 0.045 || tip.y > H * 0.955) continue;
+            if (frame && (tree === 0 ? tip.y > H * 0.232 : tip.y < H * 0.768)) continue;
+            if (trunks.some(nodes => nodes.some(node => Math.hypot(tip.x - node.x, tip.y - node.y) < nodeSize * 1.7))) continue;
+            if (edges.some(({a, b}) => segmentsCross(root, tip, a, b))) continue;
+            addEdge(root, tip);
+            network.push(tip);
+            added++;
+          }
+
+          for (const network of trunks) {
+            for (const point of network) {
+              if (!point.trunk && point.degree === 2) continue;
+              items.push({
+                shape: effect.shape, x: point.x, y: point.y, size: nodeSize,
+                w: nodeSize, h: nodeSize, rot: 0, color, order: point.order
+              });
+            }
+          }
+        }
+
+        else if (logic === 'settlements') {
+          const count = 3 + Math.round(intensity * 3);
+          const centers = poster ? [
+            [0.15, 0.195], [0.245, 0.105], [0.10, 0.255], [0.19, 0.143], [0.29, 0.085], [0.22, 0.28]
+          ].slice(0, count).map(([x, y]) => ({
+            x: x + (rng() - 0.5) * 0.10, y: y + (rng() - 0.5) * 0.075
+          })) : getClusterCenters(rng, count, 0.16 + intensity * 0.13);
+          const step = baseUnit * (poster ? 0.77 : 1.60);
+          const villageRadius = Math.min(minDim * (0.064 + intensity * 0.054), step * (poster ? 5.65 : 7));
+          centers.forEach((center, village) => {
+            const angle = (rng() - 0.5) * 1.25;
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            const cells = Math.ceil(villageRadius / step);
+            for (let row = -cells; row <= cells; row++) {
+              for (let col = -cells; col <= cells; col++) {
+                const distance = Math.hypot(row * 1.16, col) * step / villageRadius;
+                if (distance > 1 || rng() > 0.98 - distance * 0.39) continue;
+                // Le fasce vuote fungono da strade tra gli isolati.
+                const lx = (col + Math.sign(col) * 0.25 + (rng() - 0.5) * 0.23) * step;
+                const ly = (row + (rng() - 0.5) * 0.30) * step;
+                const x = center.x * W + lx * cos - ly * sin;
+                const y = center.y * H + lx * sin + ly * cos;
+                if (!passesZoneFilter(x / W, y / H, rng, false)) continue;
+                if (poster && isInsideLogo(x, y, logo)) continue;
+                const houseSize = baseUnit * (poster ? 0.48 : 1);
+                const w = houseSize * (0.64 + rng() * 0.59);
+                const h = houseSize * (0.55 + rng() * 0.66);
+                const house = Math.floor(rng() * HOUSE_FOOTPRINTS.length);
+                const rot = angle + (rng() < 0.22 ? Math.PI / 2 : 0);
+                items.push({
+                  shape: effect.shape, house, x, y, w, h, size: Math.max(w, h), rot, color,
+                  order: clamp((village + distance) / centers.length, 0, 1)
+                });
+              }
+            }
+          });
+        }
+
         else if (logic === 'tension-arcs') {
           const anchor = getFocalPoint(rng, 0.2);
           const numArcs = Math.max(2, Math.round(2 + intensity * 6));
           for (let a = 0; a < numArcs; a++) {
             const target = getFocalPoint(rng, 0.75);
             const x1 = anchor.x * W, y1 = anchor.y * H;
-            const x2 = target.x * W, y2 = target.y * H;
-            const mx = (x1 + x2) / 2 + (rng() - 0.5) * minDim * 0.25;
-            const my = (y1 + y2) / 2 + (rng() - 0.5) * minDim * 0.25;
+            const reach = 0.35 + intensity * 0.65;
+            const x2 = x1 + (target.x * W - x1) * reach;
+            const y2 = y1 + (target.y * H - y1) * reach;
+            const mx = (x1 + x2) / 2 + (rng() - 0.5) * minDim * reach * 0.25;
+            const my = (y1 + y2) / 2 + (rng() - 0.5) * minDim * reach * 0.25;
 
             const steps = Math.round(10 + intensity * 18);
             for (let i = 0; i < steps; i++) {
@@ -752,7 +1093,7 @@
                 w: baseUnit * 1.5,
                 h: baseUnit * 0.75,
                 rot,
-                color: effect.color,
+                color,
                 order: t
               });
             }
@@ -760,16 +1101,16 @@
         }
 
         // ------------------------------------------------------------------
-        // 9. ACCUMULATION (Bollette: hollow rectangles growing toward a corner/zone)
+        // 9. ACCUMULATION (Bollette: outlines clustered toward a corner or zone)
         // ------------------------------------------------------------------
         else if (logic === 'accumulation') {
           const cornerIdx = Math.floor(rng() * 4);
-          const target = [
+          const target = state.zoneMode === 'free' ? [
             { x: 0.82, y: 0.82 },
             { x: 0.18, y: 0.82 },
             { x: 0.82, y: 0.18 },
             { x: 0.18, y: 0.18 }
-          ][cornerIdx];
+          ][cornerIdx] : getFocalPoint(rng, 0.31);
 
           const count = Math.round(20 + intensity * 110);
           let tries = 0;
@@ -792,7 +1133,7 @@
               w: baseUnit * 0.9 * rectScale,
               h: baseUnit * 1.35 * rectScale,
               rot: (rng() > 0.75 ? Math.PI / 2 : 0),
-              color: effect.color,
+              color,
               order: 1 - distNorm
             });
           }
@@ -801,15 +1142,75 @@
         // ------------------------------------------------------------------
         // 10. PLUME (Emissioni: pixelated cloud dispersing downwind from epicenter)
         // ------------------------------------------------------------------
+        else if (logic === 'emission-scatter') {
+          const cell = poster ? minDim * 0.023 * Math.sqrt(state.globalScale) : Math.max(7, baseUnit * 1.16);
+          const side = cell * (poster ? 0.82 : 0.74);
+          const firstX = cell * (0.4 + rng() * 0.25);
+          const firstY = cell * (0.4 + rng() * 0.25);
+          const range = minDim * (0.055 + intensity * 0.11);
+          const sources = poster ? [
+            [0.075, 0.145, 0.103, 0.062, 0.58],
+            [0.375, 0.158, 0.132, 0.118, 0.90],
+            [0.645, 0.283, 0.133, 0.088, 0.76],
+            [0.312, 0.312, 0.102, 0.066, 0.62],
+            [0.561, 0.408, 0.078, 0.070, 0.58],
+            [0.771, 0.103, 0.083, 0.063, 0.53],
+            [0.465, 0.553, 0.098, 0.092, 0.48],
+            [0.825, 0.684, 0.103, 0.060, 0.40],
+            [0.706, 0.829, 0.135, 0.098, 0.44],
+            [0.158, 0.640, 0.069, 0.065, 0.40]
+          ].map(([x, y, rx, ry, weight]) => ({
+            x: x + (rng() - 0.5) * 0.115, y: y + (rng() - 0.5) * 0.105,
+            rx: rx * (0.54 + intensity * 0.65), ry: ry * (0.52 + intensity * 0.71), weight
+          })) : getClusterCenters(rng, 5, 0.13 + intensity * 0.12).map(center => ({
+            ...center, rx: range / W * (0.75 + rng() * 0.68), ry: range / H * (0.72 + rng() * 0.77),
+            weight: 0.62 + rng() * 0.38
+          }));
+          const jitter = cell * (poster ? 0.045 : 0.11);
+
+          // La probabilità cala gradualmente attorno a ogni sorgente; una trama
+          // irregolare lascia vuoti anche nelle zone con più quadratini.
+          for (let row = 0, y = firstY; y < H; row++, y += cell) {
+            for (let col = 0, x = firstX; x < W; col++, x += cell) {
+              const px = x + (hash2D(col, row, subSeed + 11) * 2 - 1) * jitter;
+              const py = y + (hash2D(col, row, subSeed + 23) * 2 - 1) * jitter;
+              const nx = px / W;
+              const ny = py / H;
+              if (!passesZoneFilter(nx, ny, rng, false)) continue;
+              let density = 0;
+              for (const source of sources) {
+                const distance = ((nx - source.x) / source.rx) ** 2 + ((ny - source.y) / source.ry) ** 2;
+                density = Math.max(density, source.weight / (1 + distance ** 2.4));
+              }
+              const grain = fbm2D(nx * 26, ny * 30, subSeed);
+              const variation = 0.15 + 0.93 * grain ** 1.25;
+              const clearLogo = poster && isInsideLogo(px, py, logo) ? 0.10 : 1;
+              const probability = Math.min(0.48, density ** 1.18 * variation * (0.41 + intensity * 0.82)) * clearLogo;
+              if (hash2D(col, row, subSeed + 37) >= probability) continue;
+              items.push({
+                shape: 'square', x: px, y: py, size: side, w: side, h: side, color,
+                order: clamp(ny * 0.72 + nx * 0.22, 0, 1)
+              });
+            }
+          }
+        }
+
         else if (logic === 'plume') {
           const origin = state.zoneMode === 'epicenter'
             ? { x: state.epicenter.x, y: state.epicenter.y }
             : getFocalPoint(rng, 0.25);
 
           // Wind direction angle
-          const windAngle = state.zoneMode === 'diagonal'
+          let windAngle = state.zoneMode === 'diagonal'
             ? -Math.PI / 4
             : (-Math.PI * 0.75 + rng() * Math.PI * 1.5);
+          if (state.zoneMode === 'frame') {
+            const horizontal = origin.y < 0.15 || origin.y > 0.85;
+            const edgeDirection = horizontal
+              ? (origin.x < 0.5 ? 0 : Math.PI)
+              : (origin.y < 0.5 ? Math.PI / 2 : -Math.PI / 2);
+            windAngle = edgeDirection + (rng() - 0.5) * 0.32;
+          }
           const wx = Math.cos(windAngle);
           const wy = Math.sin(windAngle);
           const px = -wy;
@@ -852,7 +1253,7 @@
                 w: cell * 0.86,
                 h: cell * 0.86,
                 rot: 0,
-                color: effect.color,
+                color,
                 order: progressU
               });
             }
@@ -860,43 +1261,80 @@
         }
 
         // ------------------------------------------------------------------
-        // 11. HEAT-ISLAND (Calore: dense halftone radial thermal patch)
+        // 11. Radial reticules for Calore and Valore immobiliare
         // ------------------------------------------------------------------
-        else if (logic === 'heat-island') {
-          const origin = state.zoneMode === 'epicenter'
-            ? { x: state.epicenter.x, y: state.epicenter.y }
-            : getFocalPoint(rng, 0.3);
-
-          const step = Math.max(8, baseUnit * 1.18);
-          const maxR = (0.18 + intensity * 0.30) * minDim;
+        else if (logic === 'heat-island' || logic === 'property-grid') {
+          const property = logic === 'property-grid';
+          const origin = getFocalPoint(rng, 0.10);
+          const step = Math.max(8, baseUnit * (property ? 1.32 : 1.18));
+          const maxR = (0.10 + intensity * 0.43) * minDim;
+          const merging = effect.mergeDots ? clamp((intensity - 0.32) / 0.68, 0, 1) : 0;
+          const maxDiameterRatio = property ? 0.82 : 0.97 + merging * 0.25;
+          const feathered = property || effect.shape === 'halftone';
+          const radiusRatio = property ? DIAMOND_RADIUS_RATIO : HALFTONE_RADIUS_RATIO;
+          const fieldAngle = property ? (rng() - 0.5) * 1.3 : 0;
+          const cos = Math.cos(fieldAngle);
+          const sin = Math.sin(fieldAngle);
+          const parcelAt = property ? createParcelMap(subSeed, intensity) : null;
+          const featherWidth = Math.max(step * 3, maxR * 0.14);
           const cx = origin.x * W;
           const cy = origin.y * H;
 
-          const startX = Math.max(step, Math.floor((cx - maxR * 1.2) / step) * step);
-          const endX   = Math.min(W - step, cx + maxR * 1.2);
-          const startY = Math.max(step, Math.floor((cy - maxR * 1.2) / step) * step);
-          const endY   = Math.min(H - step, cy + maxR * 1.2);
+          const span = maxR * (feathered ? 1.25 : 1.2);
+          const startX = Math.max(step, Math.floor((cx - span) / step) * step);
+          const endX = Math.min(W - step, cx + span);
+          const startY = Math.max(step, Math.floor((cy - span) / step) * step);
+          const endY = Math.min(H - step, cy + span);
+          const smooth = value => {
+            const t = clamp(value, 0, 1);
+            return t * t * (3 - 2 * t);
+          };
 
           for (let y = startY; y <= endY; y += step) {
             for (let x = startX; x <= endX; x += step) {
               const nx = x / W, ny = y / H;
-              if (state.zoneMode === 'frame' && isInsideSafeFrame(nx, ny)) continue;
+              if (!passesZoneFilter(nx, ny, rng, false)) continue;
 
               const nVal = fbm2D(nx * 4.5, ny * 4.5, subSeed);
-              const d = Math.hypot(x - cx, y - cy) / maxR;
+              const dx = (x - cx) / maxR;
+              const dy = (y - cy) / maxR;
+              const d = Math.hypot(dx, dy);
               const effD = d + (nVal - 0.5) * 0.38;
-              if (effD > 1.0) continue;
+              const edge = feathered ? 1.06 : 1;
+              if (effD >= edge) continue;
+              if (property) {
+                const u = dx * cos - dy * sin;
+                const v = (dx * sin + dy * cos) * 0.84;
+                if (parcelAt(u, v) === null) continue;
+              }
 
-              // Halftone radius fades outward
-              const dotScale = clamp(1.15 - effD * 0.88, 0.25, 1.15);
+              const heat = clamp(1 - effD / edge, 0, 1);
+              let size = step * (0.21 + smooth(heat) * 0.70);
+              if (feathered) {
+                let clearance = Math.min(x - W * 0.02, W * 0.98 - x, y - H * 0.02, H * 0.98 - y);
+                if (state.zoneMode === 'frame') {
+                  const dx = Math.max(SAFE_FRAME.left * W - x, x - SAFE_FRAME.right * W, 0);
+                  const dy = Math.max(SAFE_FRAME.top * H - y, y - SAFE_FRAME.bottom * H, 0);
+                  clearance = Math.min(clearance, Math.hypot(dx, dy));
+                }
+                const fringe = smooth(heat / 0.30) * smooth(clearance / featherWidth);
+                const core = smooth(heat / 0.73);
+                const grain = fbm2D(nx * 7.2 + 4, ny * 7.2 + 9, subSeed + 17);
+                const pocket = smooth((grain - 0.40) / 0.32);
+                const dot = 0.28 + core * (0.62 + (grain - 0.5) * 0.28);
+                // A maglia quadrata gli interstizi restano leggibili anche al massimo.
+                const diameterRatio = Math.min(maxDiameterRatio, (dot + merging * core * pocket * 0.54) * fringe);
+                size = step * diameterRatio / (2 * radiusRatio);
+                if (size < 0.42) continue;
+              }
               items.push({
                 shape: effect.shape,
                 x, y,
-                size: step * 0.72 * dotScale,
-                w: step * 0.72 * dotScale,
-                h: step * 0.72 * dotScale,
+                size,
+                w: size,
+                h: size,
                 rot: 0,
-                color: effect.color,
+                color,
                 order: clamp(d, 0, 1)
               });
             }
@@ -906,6 +1344,67 @@
         // ------------------------------------------------------------------
         // 12. ISOPHONES (Rumore: concentric acoustic rings / vibrating wave bands)
         // ------------------------------------------------------------------
+        else if (logic === 'diagonal-bands') {
+          const focal = getFocalPoint(rng, 0.10);
+          const angle = -Math.PI * 0.17;
+          const dx = Math.cos(angle);
+          const dy = Math.sin(angle);
+          const reach = minDim * (0.123 + intensity * 0.148);
+          const gap = Math.max(7, baseUnit * 1.48);
+          const segment = Math.min(gap * 2.65, reach * 0.34);
+          const cx = focal.x * W;
+          const cy = focal.y * H;
+          const valid = (x, y) => passesZoneFilter(x / W, y / H, rng, false);
+          const direction = rng() * Math.PI * 2;
+          const along = Math.cos(direction);
+          const across = Math.sin(direction);
+          const strength2 = 0.69 + rng() * 0.16;
+          const limitU = reach * (1.06 + Math.abs(along) * 0.57);
+          const limitV = reach * (0.76 + Math.abs(across) * 0.57);
+
+          // I due nuclei hanno contorni asimmetrici e una fascia debole condivisa.
+          const levelAt = (u, v) => {
+            const localU = u / reach;
+            const localV = v / reach;
+            const a = localU * along + localV * across;
+            const b = -localU * across + localV * along;
+            const primary = Math.max(0, 1 - ((a + 0.24) / 0.94) ** 2 - ((b + a * 0.18) / 0.59) ** 2);
+            const secondary = Math.max(0, 1 - ((a - 0.58) / 0.63) ** 2 - ((b - 0.07 - a * 0.29) / 0.45) ** 2) * strength2;
+            const base = primary ** 1.42;
+            const combined = base + secondary ** 1.48 * (1 - base);
+            const grain = fbm2D(u / minDim * 14 + 8, v / minDim * 16 + 3, subSeed);
+            return clamp(combined * (0.91 + grain * 0.28), 0, 1);
+          };
+          const cutoff = 0.035;
+
+          const rows = Math.floor(limitV / gap);
+          for (let row = -rows; row <= rows; row++) {
+            const v = row * gap;
+            const rowShift = (hash2D(row, 0, subSeed) - 0.5) * segment;
+            const first = Math.floor((-limitU - rowShift) / segment) * segment + rowShift;
+            for (let u = first; u < limitU; u += segment) {
+              const next = Math.min(u + segment, limitU);
+              const mid = (u + next) / 2;
+              const level = levelAt(mid, v);
+              if (level <= cutoff) continue;
+              const left = levelAt(u, v);
+              const right = levelAt(next, v);
+              const start = left < cutoff ? u + (mid - u) * (cutoff - left) / (level - left) : u;
+              const end = right < cutoff ? next - (next - mid) * (cutoff - right) / (level - right) : next;
+              if (end - start < 0.6) continue;
+              const x1 = cx + start * dx - v * dy;
+              const y1 = cy + start * dy + v * dx;
+              const x2 = cx + end * dx - v * dy;
+              const y2 = cy + end * dy + v * dx;
+              if (!valid(x1, y1) || !valid(x2, y2)) continue;
+              const width = gap * (0.036 + Math.round(level * 6) / 6 * 0.92);
+              lines.push({
+                x1, y1, x2, y2, color, strokeWidth: width, opacity: 1, order: 1 - level
+              });
+            }
+          }
+        }
+
         else if (logic === 'isophones') {
           const origin = state.zoneMode === 'epicenter'
             ? { x: state.epicenter.x, y: state.epicenter.y }
@@ -942,11 +1441,24 @@
                 w: stepX * (0.72 + (1 - d) * 0.22),
                 h: Math.max(1.6, baseUnit * 0.22),
                 rot: 0,
-                color: effect.color,
+                color,
                 order: clamp(d, 0, 1)
               });
             }
           }
+        }
+
+        if (effect.maxDots) {
+          const available = Math.min(items.length, effect.maxDots);
+          const count = Math.round(available * strength);
+          const size = baseUnit * (effect.shape === 'job-circle' ? 1.23
+            : poster && effect.id === 'flora-fauna' ? 1.86 : 1);
+          // L'ordine dipende dal seed, quindi aumentare la quantità aggiunge
+          // punti alla selezione esistente conservandone posizione e misura.
+          const ranked = items.map((item, index) => ({ item, rank: hash2D(index, 0, subSeed) }));
+          ranked.sort((a, b) => a.rank - b.rank);
+          const dots = ranked.slice(0, count).map(({ item }) => ({ ...item, size }));
+          return { items: dots, lines };
         }
 
         return { items, lines };
@@ -970,6 +1482,19 @@
         };
       }
 
+      function segmentsCross(a, b, c, d) {
+        if (a === c || a === d) {
+          const other = a === c ? d : c;
+          const angle = Math.atan2(b.y - a.y, b.x - a.x);
+          const otherAngle = Math.atan2(other.y - a.y, other.x - a.x);
+          return Math.cos(angle - otherAngle) > 0.91;
+        }
+        const turn = (p, q, r) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+        return Math.max(Math.min(a.x, b.x), Math.min(c.x, d.x)) <= Math.min(Math.max(a.x, b.x), Math.max(c.x, d.x)) &&
+          Math.max(Math.min(a.y, b.y), Math.min(c.y, d.y)) <= Math.min(Math.max(a.y, b.y), Math.max(c.y, d.y)) &&
+          turn(a, b, c) * turn(a, b, d) <= 0 && turn(c, d, a) * turn(c, d, b) <= 0;
+      }
+
       function pointOnEdge(edge, rng, W, H) {
         const p = 0.08 + rng() * 0.84;
         if (edge === 0) return { x: p * W, y: 0.03 * H };
@@ -982,30 +1507,209 @@
          6. REBUILD ALL GEOMETRY LAYERS
          ====================================================================== */
 
+      function getPointBounds(points) {
+        return {
+          left: Math.min(...points.map(point => point.x)),
+          right: Math.max(...points.map(point => point.x)),
+          top: Math.min(...points.map(point => point.y)),
+          bottom: Math.max(...points.map(point => point.y))
+        };
+      }
+
+      function ribbonIntersectsStrip(points, x, y, width, height) {
+        const midX = x + width / 2;
+        const midY = y + height / 2;
+        let inside = false;
+        for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+          const a = points[j];
+          const b = points[i];
+          if ((a.y > midY) !== (b.y > midY) &&
+            a.x + (b.x - a.x) * (midY - a.y) / (b.y - a.y) > midX) inside = !inside;
+          if (Math.max(a.x, b.x) < x || Math.min(a.x, b.x) > x + width ||
+            Math.max(a.y, b.y) < y || Math.min(a.y, b.y) > y + height) continue;
+          if (a.x === b.x) return true;
+          const t1 = (x - a.x) / (b.x - a.x);
+          const t2 = (x + width - a.x) / (b.x - a.x);
+          const y1 = a.y + (b.y - a.y) * Math.max(0, Math.min(t1, t2));
+          const y2 = a.y + (b.y - a.y) * Math.min(1, Math.max(t1, t2));
+          if (Math.max(y1, y2) >= y && Math.min(y1, y2) <= y + height) return true;
+        }
+        return inside;
+      }
+
+      function createAquiferRibbon(points, bounds, pitch, contamination, seed) {
+        const f = value => Number(value.toFixed(2));
+        const outline = points.map((point, i) => `${i ? 'L' : 'M'}${f(point.x)} ${f(point.y)}`).join('') + 'Z';
+        const block = pitch * 5.25;
+        const strips = [];
+        for (let row = Math.floor(bounds.top / pitch); row * pitch < bounds.bottom; row++) {
+          // Mattoni orizzontali sfalsati, ritagliati dalla sagoma del tracciato.
+          const shift = (((row % 4) + 4) % 4) * block * 0.24;
+          const y = row * pitch + pitch * 0.10;
+          for (let col = Math.floor((bounds.left - shift) / block); col * block + shift < bounds.right; col++) {
+            const x = col * block + shift;
+            const width = block * (0.63 + hash2D(col, row, seed + 5) * 0.29);
+            const height = pitch * (0.72 + hash2D(col, row, seed + 11) * 0.14);
+            if (!ribbonIntersectsStrip(points, x, y, width, height)) continue;
+            strips.push({
+              rank: hash2D(col, row, seed + 23),
+              d: `M${f(x)} ${f(y)}H${f(x + width)}V${f(y + height)}H${f(x)}Z`
+            });
+          }
+        }
+        strips.sort((a, b) => a.rank - b.rank);
+        const cutoff = Math.round(strips.length * contamination / 100);
+        const bands = [
+          { color: '#774400', d: strips.slice(0, cutoff).map(strip => strip.d).join('') },
+          { color: '#2CC6C6', d: strips.slice(cutoff).map(strip => strip.d).join('') }
+        ].filter(band => band.d);
+        return {
+          outline, bounds, clip: new Path2D(outline),
+          bands: bands.map(band => ({ ...band, path: new Path2D(band.d) }))
+        };
+      }
+
+      function redistributeLayer(layer, effect, W, H) {
+        const amount = (effect.distribution - DEFAULT_DISTRIBUTION) / DEFAULT_DISTRIBUTION;
+        if (!amount || (!layer.items.length && !layer.lines.length)) return;
+
+        // Sposta l'intero livello come un blocco, conservando misure e angoli.
+        let left = W, right = 0, top = H, bottom = 0;
+        function include(x, y, padding) {
+          left = Math.min(left, x - padding);
+          right = Math.max(right, x + padding);
+          top = Math.min(top, y - padding);
+          bottom = Math.max(bottom, y + padding);
+        }
+        for (const item of layer.items) {
+          if (item.ribbon) {
+            const bounds = item.ribbon.bounds;
+            include(item.x + bounds.left, item.y + bounds.top, 0);
+            include(item.x + bounds.right, item.y + bounds.bottom, 0);
+          } else {
+            include(item.x, item.y, Math.max(item.size, item.w || 0, item.h || 0) * 0.75);
+          }
+        }
+        for (const line of layer.lines) {
+          const padding = line.strokeWidth / 2;
+          include(line.x1, line.y1, padding);
+          include(line.x2, line.y2, padding);
+        }
+        const vertical = state.zoneMode === 'diagonal' ? -amount : amount;
+        const dx = amount * Math.min(W * 0.218, Math.max(0, amount < 0 ? left : W - right));
+        const dy = vertical * Math.min(H * 0.18, Math.max(0, vertical < 0 ? top : H - bottom));
+        for (const item of layer.items) {
+          item.x += dx;
+          item.y += dy;
+        }
+        for (const line of layer.lines) {
+          line.x1 += dx;
+          line.y1 += dy;
+          line.x2 += dx;
+          line.y2 += dy;
+        }
+      }
+
+      function usesHouseLayout(effect) {
+        return effect.logic === 'settlements';
+      }
+
+      function applyBrushStrokes(layer, effect, W, H) {
+        const key = usesHouseLayout(effect) ? HOUSE_LAYER_ID : effect.id;
+        if (!state.brush.strokes.some(stroke => stroke.effectId === key)) return;
+        const items = layer.items.slice();
+        const lines = layer.lines.slice();
+        const baseUnit = Math.min(W, H) / 90 * state.globalScale;
+
+        state.brush.strokes.forEach((stroke, strokeIndex) => {
+          if (stroke.effectId !== key) return;
+          const rng = createRNG((strokeIndex + 1) * 4129);
+          stroke.points.forEach((point, index) => {
+            const x = point.x * W;
+            const y = point.y * H;
+            const order = index / Math.max(1, stroke.points.length) * 0.85;
+            if (effect.id === 'rumore') {
+              const sample = lines[Math.floor(rng() * lines.length)];
+              const dx = sample ? (sample.x2 - sample.x1) / 2 : baseUnit;
+              const dy = sample ? (sample.y2 - sample.y1) / 2 : -baseUnit * 0.60;
+              layer.lines.push({
+                x1: x - dx, y1: y - dy, x2: x + dx, y2: y + dy, color: effect.color,
+                strokeWidth: sample?.strokeWidth || baseUnit * 0.26, opacity: 1, order
+              });
+              return;
+            }
+
+            if (effect.id === 'falda') {
+              const before = stroke.points[Math.max(0, index - 1)];
+              const after = stroke.points[Math.min(stroke.points.length - 1, index + 1)];
+              const angle = Math.atan2((after.y - before.y) * H, (after.x - before.x) * W);
+              const cos = Math.cos(angle);
+              const sin = Math.sin(angle);
+              const w = baseUnit * 1.65;
+              const h = baseUnit * 0.82;
+              const points = [[-w, -h], [w, -h], [w, h], [-w, h]].map(([u, v]) => ({
+                x: u * cos - v * sin, y: u * sin + v * cos
+              }));
+              const ribbon = createAquiferRibbon(points, getPointBounds(points), baseUnit * 0.42,
+                effect.contamination, (strokeIndex + 1) * 2539 + index);
+              layer.items.push({ shape: effect.shape, x, y, color: effect.color, size: w, order, ribbon });
+              return;
+            }
+            const template = items[Math.floor(rng() * items.length)];
+            const size = template?.size || baseUnit;
+            const item = {
+              shape: effect.shape, color: effect.color, w: size, h: size, rot: 0,
+              ...template, x, y, size, order
+            };
+            if (usesHouseLayout(effect) && item.house === undefined) {
+              item.house = Math.floor(rng() * HOUSE_FOOTPRINTS.length);
+            }
+            if (effect.id === 'traffico') {
+              const before = stroke.points[Math.max(0, index - 1)];
+              const after = stroke.points[Math.min(stroke.points.length - 1, index + 1)];
+              const tangent = Math.atan2((after.y - before.y) * H, (after.x - before.x) * W);
+              item.rot = tangent + Math.PI / 2;
+            }
+            layer.items.push(item);
+          });
+        });
+      }
+
       function rebuildGeometry() {
         const { width: W, height: H } = FORMATS[state.format];
         state.layers.clear();
-        state.fixedAssets = state.effects
-          .filter(effect => effect.mapAsset && effect.active)
-          .map(effect => ({ effectId: effect.id, assetPath: effect.assetPath }));
         let total = 0;
 
-        // Render order: background patches first, then plumes, heat, bars, lines, crisp icons on top
         const renderOrderIds = [
-          'greenfield', 'brownfield', 'calore', 'rumore',
+          'calore', 'consumo-suolo', 'falda', 'rumore',
           'emissioni', 'valore-immobiliare', 'posti-di-lavoro',
-          'flora-fauna', 'bollette', 'pressione-rete', 'traffico', 'tralicci'
+          'flora-fauna', 'pressione-rete', 'bollette', 'traffico', 'tralicci'
         ];
 
+        const houses = state.effects.find(effect => effect.id === HOUSE_LAYER_ID);
+        let houseLayout;
         renderOrderIds.forEach((id, idx) => {
           const eff = state.effects.find(e => e.id === id);
-          if (!eff) return;
-          const layer = generateEffectLayer(eff, W, H, idx);
+          if (!eff?.active) return;
+          let layer;
+          if (usesHouseLayout(eff)) {
+            if (!houseLayout) {
+              houseLayout = generateEffectLayer({ ...houses, active: true }, W, H, renderOrderIds.indexOf(HOUSE_LAYER_ID));
+              redistributeLayer(houseLayout, houses, W, H);
+            }
+            layer = { items: houseLayout.items.map(item => ({ ...item, shape: eff.shape, color: eff.color })), lines: [] };
+          } else {
+            layer = generateEffectLayer(eff, W, H, idx);
+            redistributeLayer(layer, eff, W, H);
+          }
+          applyBrushStrokes(layer, eff, W, H);
+          const glitchOrder = createRNG(hash2D(idx, 738, state.seed) * 0x100000000);
+          for (const item of layer.items) item.glitchDelay = glitchOrder();
+          for (const line of layer.lines) line.glitchDelay = glitchOrder();
           state.layers.set(id, layer);
           total += layer.items.length + layer.lines.length;
         });
 
-        state.totalPrimitives = total;
         document.getElementById('particleCountBadge').textContent = `${total} geometrie`;
         renderCanvas(state.anim.progress);
       }
@@ -1031,7 +1735,9 @@
         const style = state.anim.style;
         let delay = item.order;
 
-        if (style === 'wave') {
+        if (style === 'plotter-glitch') {
+          delay = item.glitchDelay;
+        } else if (style === 'wave') {
           delay = clamp((item.x / W) * 0.65 + (item.y / H) * 0.35, 0, 1);
         } else if (style === 'pop-scale') {
           delay = item.order * 0.7;
@@ -1082,26 +1788,6 @@
          ====================================================================== */
 
       const canvas = document.getElementById('identityCanvas');
-      const ctx = canvas.getContext('2d');
-
-      function drawAssetContained(ctx, image, item) {
-        if (!image || !image.complete) return;
-
-        const iw = image.naturalWidth || 1;
-        const ih = image.naturalHeight || 1;
-        let boxW = item.w || item.size;
-        let boxH = item.h || item.size;
-
-        if (!item.w && !item.h) {
-          boxW = item.size;
-          boxH = item.size;
-        }
-
-        const scale = Math.min(boxW / iw, boxH / ih);
-        const dw = iw * scale;
-        const dh = ih * scale;
-        ctx.drawImage(image, -dw / 2, -dh / 2, dw, dh);
-      }
 
       function drawShapeCanvas(ctx, item, anim) {
         if (anim.alpha <= 0.01 || anim.scale <= 0.01) return;
@@ -1116,12 +1802,33 @@
         ctx.fillStyle = item.color;
         ctx.strokeStyle = item.color;
 
-        switch (item.shape) {
-          case 'asset': {
-            const image = effectAssetCache.get(item.assetPath);
-            drawAssetContained(ctx, image, item);
-            break;
+        if (item.ribbon) {
+          ctx.clip(item.ribbon.clip);
+          for (const band of item.ribbon.bands) {
+            ctx.fillStyle = band.color;
+            ctx.fill(band.path);
           }
+          ctx.restore();
+          return;
+        }
+
+        const motif = getVectorMotif(item);
+        if (motif) {
+          ctx.scale(item.w, item.h);
+          for (const stroke of motif) {
+            if (item.shape === 'house-outline') {
+              ctx.lineWidth = 0.12;
+              ctx.stroke(stroke.path);
+            } else {
+              ctx.fillStyle = stroke.fill || item.color;
+              ctx.fill(stroke.path);
+            }
+          }
+          ctx.restore();
+          return;
+        }
+
+        switch (item.shape) {
           case 'bar': {
             ctx.fillRect(-item.w / 2, -item.h / 2, item.w, item.h);
             break;
@@ -1145,10 +1852,19 @@
           }
           case 'cross-dot': {
             const arm = s * 0.46;
-            ctx.lineWidth = Math.max(1.4, s * 0.24);
+            ctx.lineWidth = Math.max(1.4, s * 0.32);
             ctx.beginPath();
             ctx.moveTo(-arm, 0); ctx.lineTo(arm, 0);
             ctx.moveTo(0, -arm); ctx.lineTo(0, arm);
+            ctx.stroke();
+            break;
+          }
+          case 'job-circle': {
+            ctx.lineWidth = s * 0.204;
+            ctx.fillStyle = '#FFFFFF';
+            ctx.beginPath();
+            ctx.arc(0, 0, s * 0.398, 0, Math.PI * 2);
+            ctx.fill();
             ctx.stroke();
             break;
           }
@@ -1160,13 +1876,17 @@
             break;
           }
           case 'diamond': {
-            const r = s * 0.55;
+            const r = s * DIAMOND_RADIUS_RATIO;
             ctx.beginPath();
             ctx.moveTo(0, -r);
             ctx.lineTo(r, 0);
             ctx.lineTo(0, r);
             ctx.lineTo(-r, 0);
             ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = DIAMOND_DOT_COLOR;
+            ctx.beginPath();
+            ctx.arc(0, 0, s * DIAMOND_DOT_RADIUS_RATIO, 0, Math.PI * 2);
             ctx.fill();
             break;
           }
@@ -1202,7 +1922,7 @@
           }
           case 'halftone': {
             ctx.beginPath();
-            ctx.arc(0, 0, s * 0.52, 0, Math.PI * 2);
+            ctx.arc(0, 0, s * HALFTONE_RADIUS_RATIO, 0, Math.PI * 2);
             ctx.fill();
             break;
           }
@@ -1220,59 +1940,90 @@
         ctx.restore();
       }
 
+      function getTypographyLayout(W, H) {
+        const { mode, position, subtitle } = state.typography;
+        const unit = Math.min(W, H);
+        const poster = state.zoneMode === 'poster';
+        const pad = unit * (poster ? 0.042 : 0.065);
+        const centered = position === 'center';
+        const atTop = position === 'top-left';
+        const tx = centered ? W / 2 : pad;
+        const titleSize = Math.round(unit * 0.058);
+        const subSize = Math.round(unit * (poster && mode === 'logo' ? 0.032 : 0.016));
+        const anchor = centered ? 'middle' : 'start';
+        const ty = centered ? H / 2 : atTop ? pad + titleSize : H - pad - subSize * 2.2;
+        if (mode === 'text') {
+          return {
+            logo: null, title: { x: tx, y: ty, size: titleSize, anchor },
+            subtitle: { x: tx, y: ty + subSize * 1.85, size: subSize, anchor }
+          };
+        }
+
+        const ratio = CLOUD_EDITION_LOGO.width / CLOUD_EDITION_LOGO.height;
+        const width = Math.min(W * (poster ? 0.62 : 0.47), H * 0.48 * ratio);
+        const height = width / ratio;
+        const aboveLogo = poster && !centered && !atTop;
+        const subSpace = subtitle && !aboveLogo ? subSize * 1.9 : 0;
+        const x = centered ? (W - width) / 2 : pad;
+        const y = centered ? (H - height - subSpace) / 2
+          : atTop ? pad : H - pad - height - subSpace;
+
+        return {
+          logo: { x, y, width, height, scale: width / CLOUD_EDITION_LOGO.width }, title: null,
+          subtitle: aboveLogo
+            ? { x: W * 0.40, y: y - unit * 0.058, size: subSize, anchor: 'start' }
+            : { x: tx, y: y + height + subSize * 1.5, size: subSize, anchor }
+        };
+      }
+
       function drawTypographyCanvas(ctx, W, H, progress) {
-        if (!state.typography.enabled) return;
+        const typography = state.typography;
+        if (!typography.enabled) return;
         const bgInfo = BACKGROUNDS[state.background];
         const alpha = clamp(progress * 1.4, 0, 1);
         if (alpha <= 0.01) return;
 
+        const layout = getTypographyLayout(W, H);
         ctx.save();
         ctx.globalAlpha = alpha;
-
-        const title = state.typography.title || '';
-        const subtitle = state.typography.subtitle || '';
-        const pos = state.typography.position;
-        const pad = Math.min(W, H) * 0.065;
-        const titleSize = Math.round(Math.min(W, H) * 0.058);
-        const subSize = Math.round(Math.min(W, H) * 0.016);
-
-        let tx, ty, align;
-        if (pos === 'center') {
-          tx = W / 2;
-          ty = H / 2;
-          align = 'center';
-        } else if (pos === 'top-left') {
-          tx = pad;
-          ty = pad + titleSize;
-          align = 'left';
-        } else {
-          tx = pad;
-          ty = H - pad - subSize * 2.2;
-          align = 'left';
-        }
-
-        ctx.textAlign = align;
         ctx.textBaseline = 'alphabetic';
 
-        // Crisp subtle plate behind typography for legibility on dense areas
-        ctx.font = `700 ${titleSize}px 'Eiffel', 'Inter', sans-serif`;
-        ctx.fillStyle = bgInfo.ink;
-        ctx.fillText(title, tx, ty);
+        if (layout.logo) {
+          const { x, y, scale } = layout.logo;
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.scale(scale, scale);
+          ctx.fillStyle = typography.logoColor;
+          for (const path of LOGO_PATHS) ctx.fill(path);
+          ctx.restore();
+        } else {
+          const { x, y, size, anchor } = layout.title;
+          ctx.textAlign = anchor === 'middle' ? 'center' : 'left';
+          ctx.font = `700 ${size}px 'Eiffel', 'Inter', sans-serif`;
+          ctx.fillStyle = bgInfo.ink;
+          ctx.fillText(typography.title, x, y);
+        }
 
-        ctx.font = `500 ${subSize}px 'IBM Plex Mono', monospace`;
-        ctx.fillStyle = bgInfo.subInk;
-        ctx.fillText(subtitle, tx, ty + subSize * 1.85);
+        if (typography.subtitle) {
+          const { x, y, size, anchor } = layout.subtitle;
+          const posterLogo = layout.logo && state.zoneMode === 'poster';
+          ctx.textAlign = anchor === 'middle' ? 'center' : 'left';
+          ctx.font = posterLogo ? `700 ${size}px 'Eiffel', 'Inter', sans-serif` : `500 ${size}px 'IBM Plex Mono', monospace`;
+          ctx.fillStyle = posterLogo ? typography.logoColor : bgInfo.subInk;
+          ctx.fillText(typography.subtitle, x, y);
+        }
 
         ctx.restore();
       }
 
-      function renderCanvas(progress) {
+      function renderCanvas(progress, targetCanvas = canvas) {
         const { width: W, height: H } = FORMATS[state.format];
-        if (canvas.width !== W || canvas.height !== H) {
-          canvas.width = W;
-          canvas.height = H;
+        if (targetCanvas.width !== W || targetCanvas.height !== H) {
+          targetCanvas.width = W;
+          targetCanvas.height = H;
         }
 
+        const ctx = targetCanvas.getContext('2d');
         ctx.clearRect(0, 0, W, H);
 
         const bgInfo = BACKGROUNDS[state.background];
@@ -1282,17 +2033,20 @@
         }
 
         // Draw all active layers
-        state.layers.forEach((layer) => {
+        state.layers.forEach((layer, effectId) => {
           // 1. Connector lines (e.g. Tralicci vectors)
           for (let i = 0; i < layer.lines.length; i++) {
             const ln = layer.lines[i];
-            const mid = { x: (ln.x1 + ln.x2) / 2, y: (ln.y1 + ln.y2) / 2, order: ln.order };
+            const mid = {
+              x: (ln.x1 + ln.x2) / 2, y: (ln.y1 + ln.y2) / 2,
+              order: ln.order, glitchDelay: ln.glitchDelay
+            };
             const anim = computeItemAnim(mid, progress, W, H);
             if (anim.alpha <= 0.01) continue;
 
             ctx.save();
-            ctx.globalAlpha = anim.alpha * 0.85;
-            ctx.strokeStyle = ln.color;
+            ctx.globalAlpha = anim.alpha * (ln.opacity ?? 0.85);
+            ctx.strokeStyle = effectId === 'rumore' && state.background === 'dark' ? '#F1F1EF' : ln.color;
             ctx.lineWidth = ln.strokeWidth;
             ctx.beginPath();
             ctx.moveTo(ln.x1, ln.y1);
@@ -1311,23 +2065,7 @@
           }
         });
 
-        // 3. Fixed map assets (Bollette and Pressione sulle case)
-        state.fixedAssets.forEach(asset => {
-          const image = effectAssetCache.get(asset.assetPath);
-          if (!image || !image.complete) return;
-
-          ctx.save();
-          ctx.globalAlpha = clamp(progress * 1.4, 0, 1);
-          const iw = image.naturalWidth || 1;
-          const ih = image.naturalHeight || 1;
-          const scale = Math.min(W / iw, H / ih);
-          const dw = iw * scale;
-          const dh = ih * scale;
-          ctx.drawImage(image, (W - dw) / 2, (H - dh) / 2, dw, dh);
-          ctx.restore();
-        });
-
-        // 4. Optional Typography Overlay
+        // 3. Optional Typography Overlay
         drawTypographyCanvas(ctx, W, H, progress);
       }
 
@@ -1428,7 +2166,7 @@
 
         let parts = [];
         parts.push(`<?xml version="1.0" encoding="UTF-8"?>`);
-        parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}">`);
+        parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" overflow="hidden">`);
         parts.push(`  <!-- The Clouded Issue — Generative Identity Studio | Seed: ${state.seed} -->`);
 
         if (bgInfo.hex) {
@@ -1436,30 +2174,45 @@
         }
 
         state.layers.forEach((layer, effectId) => {
-          if (layer.items.length === 0 && layer.lines.length === 0) return;
           const eff = state.effects.find(e => e.id === effectId);
-          parts.push(`  <g id="${effectId}" data-name="${eff ? eff.name : effectId}">`);
+          if (layer.items.length === 0 && layer.lines.length === 0) return;
+          parts.push(`  <g id="${effectId}" data-name="${eff.name}">`);
 
           // Connector lines
           for (const ln of layer.lines) {
-            parts.push(`    <line x1="${r(ln.x1)}" y1="${r(ln.y1)}" x2="${r(ln.x2)}" y2="${r(ln.y2)}" stroke="${ln.color}" stroke-width="${r(ln.strokeWidth)}" stroke-opacity="0.85"/>`);
+            const ink = effectId === 'rumore' && state.background === 'dark' ? '#F1F1EF' : ln.color;
+            parts.push(`    <line x1="${r(ln.x1)}" y1="${r(ln.y1)}" x2="${r(ln.x2)}" y2="${r(ln.y2)}" stroke="${ink}" stroke-width="${r(ln.strokeWidth)}" stroke-opacity="${ln.opacity ?? 0.85}"/>`);
           }
 
           // Micro-geometries
-          for (const item of layer.items) {
+          for (const [itemIndex, item] of layer.items.entries()) {
             const s = item.size;
             const rotDeg = item.rot ? r(item.rot * 180 / Math.PI) : 0;
-            const tf = rotDeg ? ` transform="translate(${r(item.x)},${r(item.y)}) rotate(${rotDeg})"` : ` transform="translate(${r(item.x)},${r(item.y)})"`;
+            const transform = `translate(${r(item.x)},${r(item.y)})${rotDeg ? ` rotate(${rotDeg})` : ''}`;
+            const tf = ` transform="${transform}"`;
+            if (item.ribbon) {
+              const ribbon = item.ribbon;
+              const clipId = `${effectId}-clip-${itemIndex}`;
+              parts.push(`    <g${tf}>`);
+              parts.push(`      <defs><clipPath id="${clipId}"><path d="${ribbon.outline}"/></clipPath></defs>`);
+              parts.push(`      <g clip-path="url(#${clipId})">`);
+              for (const band of ribbon.bands) parts.push(`        <path d="${band.d}" fill="${band.color}"/>`);
+              parts.push('      </g>', '    </g>');
+              continue;
+            }
+            const motif = getVectorMotif(item);
+            if (motif) {
+              const scaled = `${transform} scale(${r(item.w)},${r(item.h)})`;
+              for (const stroke of motif) {
+                const paint = item.shape === 'house-outline'
+                  ? `fill="none" stroke="${item.color}" stroke-width="0.12"`
+                  : `fill="${stroke.fill || item.color}"`;
+                parts.push(`    <path transform="${scaled}" d="${stroke.d}" ${paint}/>`);
+              }
+              continue;
+            }
 
             switch (item.shape) {
-              case 'asset': {
-                const eff = state.effects.find(e => e.assetPath === item.assetPath);
-                const iw = eff ? eff.assetPath : item.assetPath;
-                const boxW = r(item.w || item.size);
-                const boxH = r(item.h || item.size);
-                parts.push(`    <image href="Assets/Effetti/${encodeURI(iw)}" x="${r(item.x - boxW/2)}" y="${r(item.y - boxH/2)}" width="${boxW}" height="${boxH}" preserveAspectRatio="xMidYMid meet" transform="rotate(${rotDeg} ${r(item.x)} ${r(item.y)})"/>`);
-                break;
-              }
               case 'bar':
                 parts.push(`    <rect${tf} x="${r(-item.w/2)}" y="${r(-item.h/2)}" width="${r(item.w)}" height="${r(item.h)}" fill="${item.color}"/>`);
                 break;
@@ -1474,18 +2227,21 @@
               }
               case 'cross-dot': {
                 const arm = r(s * 0.46);
-                const sw = r(Math.max(1.4, s * 0.24));
+                const sw = r(Math.max(1.4, s * 0.32));
                 parts.push(`    <path${tf} d="M${-arm},0 H${arm} M0,${-arm} V${arm}" stroke="${item.color}" stroke-width="${sw}" fill="none"/>`);
                 break;
               }
+              case 'job-circle':
+                parts.push(`    <circle cx="${r(item.x)}" cy="${r(item.y)}" r="${r(s * 0.398)}" fill="#FFFFFF" stroke="${item.color}" stroke-width="${r(s * 0.204)}"/>`);
+                break;
               case 'hollow-circle': {
                 const sw = r(Math.max(1.6, s * 0.22));
                 parts.push(`    <circle cx="${r(item.x)}" cy="${r(item.y)}" r="${r(s*0.45)}" fill="none" stroke="${item.color}" stroke-width="${sw}"/>`);
                 break;
               }
               case 'diamond': {
-                const dr = r(s * 0.55);
-                parts.push(`    <polygon${tf} points="0,${-dr} ${dr},0 0,${dr} ${-dr},0" fill="${item.color}"/>`);
+                const dr = r(s * DIAMOND_RADIUS_RATIO);
+                parts.push(`    <g${tf}><polygon points="0,${-dr} ${dr},0 0,${dr} ${-dr},0" fill="${item.color}"/><circle r="${r(s * DIAMOND_DOT_RADIUS_RATIO)}" fill="${DIAMOND_DOT_COLOR}"/></g>`);
                 break;
               }
               case 'plus': {
@@ -1510,7 +2266,7 @@
                 parts.push(`    <rect x="${r(item.x - s/2)}" y="${r(item.y - s/2)}" width="${r(s)}" height="${r(s)}" fill="${item.color}"/>`);
                 break;
               case 'halftone':
-                parts.push(`    <circle cx="${r(item.x)}" cy="${r(item.y)}" r="${r(s*0.52)}" fill="${item.color}"/>`);
+                parts.push(`    <circle cx="${r(item.x)}" cy="${r(item.y)}" r="${r(s * HALFTONE_RADIUS_RATIO)}" fill="${item.color}"/>`);
                 break;
               case 'wave': {
                 const hw = item.w / 2;
@@ -1524,26 +2280,30 @@
           parts.push(`  </g>`);
         });
 
-        state.fixedAssets.forEach(asset => {
-          parts.push(`  <g id="${asset.effectId}" data-name="Mappa fissa"><image href="Assets/Effetti/${encodeURI(asset.assetPath)}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet"/></g>`);
-        });
-
-        // Optional Typography Overlay in SVG
-        if (state.typography.enabled) {
-          const pad = Math.min(W, H) * 0.065;
-          const titleSize = Math.round(Math.min(W, H) * 0.058);
-          const subSize = Math.round(Math.min(W, H) * 0.016);
-          const pos = state.typography.position;
-          let tx, ty, anchor;
-          if (pos === 'center') { tx = W / 2; ty = H / 2; anchor = 'middle'; }
-          else if (pos === 'top-left') { tx = pad; ty = pad + titleSize; anchor = 'start'; }
-          else { tx = pad; ty = H - pad - subSize * 2.2; anchor = 'start'; }
-
+        const typography = state.typography;
+        if (typography.enabled) {
+          const layout = getTypographyLayout(W, H);
           const esc = str => String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          parts.push(`  <g id="typography-overlay">`);
-          parts.push(`    <text x="${r(tx)}" y="${r(ty)}" text-anchor="${anchor}" font-family="Eiffel, Inter, sans-serif" font-weight="700" font-size="${titleSize}" fill="${bgInfo.ink}">${esc(state.typography.title)}</text>`);
-          parts.push(`    <text x="${r(tx)}" y="${r(ty + subSize * 1.85)}" text-anchor="${anchor}" font-family="IBM Plex Mono, monospace" font-weight="500" font-size="${subSize}" fill="${bgInfo.subInk}">${esc(state.typography.subtitle)}</text>`);
-          parts.push(`  </g>`);
+          const titleFont = 'Eiffel, Inter, sans-serif';
+          const subFont = 'IBM Plex Mono, monospace';
+          function textMarkup(box, value, font, weight, fill) {
+            return `    <text x="${r(box.x)}" y="${r(box.y)}" text-anchor="${box.anchor}" font-family="${font}" font-weight="${weight}" font-size="${box.size}" fill="${fill}">${esc(value)}</text>`;
+          }
+          parts.push('  <g id="typography-overlay">');
+          if (layout.logo) {
+            const { x, y, scale } = layout.logo;
+            parts.push(`    <g id="poster-logo" role="img" aria-label="The Clouded Issue" fill="${typography.logoColor}" transform="translate(${r(x)} ${r(y)}) scale(${scale.toFixed(6)})">`);
+            for (const path of CLOUD_EDITION_LOGO.paths) parts.push(`      <path d="${path}"/>`);
+            parts.push('    </g>');
+          } else {
+            parts.push(textMarkup(layout.title, typography.title, titleFont, 700, bgInfo.ink));
+          }
+          if (typography.subtitle) {
+            const posterLogo = layout.logo && state.zoneMode === 'poster';
+            parts.push(textMarkup(layout.subtitle, typography.subtitle, posterLogo ? titleFont : subFont,
+              posterLogo ? 700 : 500, posterLogo ? typography.logoColor : bgInfo.subInk));
+          }
+          parts.push('  </g>');
         }
 
         parts.push(`</svg>`);
@@ -1574,8 +2334,9 @@
 
       function exportPNG() {
         try {
-          renderCanvas(state.anim.progress);
-          canvas.toBlob(blob => {
+          const exportCanvas = document.createElement('canvas');
+          renderCanvas(state.anim.progress, exportCanvas);
+          exportCanvas.toBlob(blob => {
             if (!blob) return showToast('Errore esportazione PNG');
             downloadBlob(blob, `the-clouded-issue-seed-${state.seed}.png`);
             showToast('PNG ad alta risoluzione scaricato');
@@ -1697,36 +2458,68 @@
             const card = document.createElement('div');
             card.className = `rounded border transition-colors ${eff.active ? 'bg-white border-[#161616]' : 'bg-[#F1F1EF] border-[#D6D6D2] opacity-80'}`;
 
-            const logicOptions = SPATIAL_LOGICS.map(l =>
-              `<option value="${l.id}" ${l.id === eff.logic ? 'selected' : ''}>${l.label}</option>`
-            ).join('');
+            const color = eff.color;
+            const intensityHint = eff.maxDots
+              ? 'Numero di pallini'
+              : eff.id === 'tralicci' ? 'Numero di ramificazioni' : 'Ampiezza e dispersione sul foglio';
+            let optionsControl = '';
+            const selectClasses = 'flex-1 bg-[#F8F8F6] border border-[#D6D6D2] rounded px-1.5 py-1 text-[10px] font-mono-tech text-[#161616] focus:outline-none focus:border-[#161616]';
+
+            if (!eff.fixedLogic) {
+              const options = eff.defaultLogic === 'flora-scatter'
+                ? [{ id: 'flora-scatter', label: 'Dispersione dal centro' }, ...SPATIAL_LOGICS]
+                : SPATIAL_LOGICS;
+              optionsControl = `
+                <label class="flex items-center gap-2">
+                  <span class="font-mono-tech text-[9px] uppercase text-[#666662] w-12 shrink-0">Logica</span>
+                  <select data-id="${eff.id}" class="eff-logic ${selectClasses}">
+                    ${options.map(option => `<option value="${option.id}" ${option.id === eff.logic ? 'selected' : ''}>${option.label}</option>`).join('')}
+                  </select>
+                </label>`;
+            }
+            const mixParameter = eff.brownfield !== undefined ? 'brownfield'
+              : eff.contamination !== undefined ? 'contamination' : null;
+            const mixControl = mixParameter ? `
+              <label class="block">
+                <input type="range" min="0" max="100" value="${eff[mixParameter]}" data-id="${eff.id}" data-parameter="${mixParameter}"
+                  aria-label="${mixParameter === 'brownfield' ? 'Percentuale di brownfield' : 'Percentuale di falda sporca'}" class="tech-slider w-full" />
+                <span class="block font-mono-tech text-[10px] text-[#666662]">${parameterReadout(mixParameter, eff[mixParameter])}</span>
+              </label>` : '';
 
             card.innerHTML = `
               <div class="p-2.5 flex items-center justify-between gap-2">
                 <div class="flex items-center gap-2 min-w-0">
-                  <span class="w-5 h-5 rounded-sm border border-black/10 bg-[#F8F8F6] flex items-center justify-center shrink-0">
-                    <svg width="14" height="14" viewBox="0 0 16 16">${eff.iconSvg}</svg>
+                  <span class="w-5 h-5 rounded-sm border border-black/10 bg-[#F8F8F6] flex items-center justify-center shrink-0" style="color:${color}">
+                    <svg width="14" height="14" viewBox="0 0 16 16">${eff.shape === 'pylon'
+                      ? `<g transform="translate(8 8) scale(14)">${PYLON_MOTIF.map(part => `<path d="${part.d}" fill="${part.fill}"/>`).join('')}</g>`
+                      : eff.iconSvg}</svg>
                   </span>
-                  <span class="w-2.5 h-2.5 rounded-full shrink-0 border border-black/15" style="background:${eff.color}"></span>
-                  <span class="text-xs font-semibold text-[#161616] truncate">${eff.name}${eff.mapAsset ? '<span class="ml-1 font-mono-tech text-[8px] uppercase text-[#666662]">Mappa</span>' : ''}</span>
+                  <span class="w-2.5 h-2.5 rounded-full shrink-0 border border-black/15" style="background:${color}"></span>
+                  <span class="text-xs font-semibold text-[#161616] truncate">${eff.name}</span>
                 </div>
                 <label class="inline-flex items-center cursor-pointer">
-                  <input type="checkbox" class="sr-only eff-toggle" data-id="${eff.id}" ${eff.active ? 'checked' : ''} />
+                  <input type="checkbox" class="sr-only eff-toggle" data-id="${eff.id}" aria-label="${eff.name}" ${eff.active ? 'checked' : ''} />
                   <span class="toggle-pill"></span>
                 </label>
               </div>
               <div class="${eff.active ? 'block' : 'hidden'} px-2.5 pb-2.5 pt-1 border-t border-[#ECECE8] space-y-2">
-                <div class="flex items-center gap-2">
-                  <span class="font-mono-tech text-[9px] uppercase text-[#666662] w-12 shrink-0">Intensità</span>
-                  <input type="range" min="10" max="100" value="${eff.intensity}" data-id="${eff.id}" class="tech-slider eff-intensity flex-1" />
+                <label class="flex items-center gap-2">
+                  <span class="font-mono-tech text-[9px] uppercase text-[#666662] w-20 shrink-0">Intensità</span>
+                  <input type="range" min="10" max="100" value="${eff.intensity}" data-id="${eff.id}" data-parameter="intensity" title="${usesHouseLayout(eff) ? 'Condivisa da Pressione sulle case e Bollette' : intensityHint}" class="tech-slider eff-intensity flex-1 min-w-0" />
                   <span class="font-mono-tech text-[10px] text-[#161616] w-7 text-right eff-int-val">${eff.intensity}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="font-mono-tech text-[9px] uppercase text-[#666662] w-12 shrink-0">Logica</span>
-                  <select data-id="${eff.id}" class="eff-logic flex-1 bg-[#F8F8F6] border border-[#D6D6D2] rounded px-1.5 py-1 text-[10px] font-mono-tech text-[#161616] focus:outline-none focus:border-[#161616]">
-                    ${logicOptions}
-                  </select>
-                </div>
+                </label>
+                <label class="flex items-center gap-2">
+                  <span class="font-mono-tech text-[9px] uppercase text-[#666662] w-20 shrink-0">Distribuzione</span>
+                  <input type="range" min="0" max="100" value="${eff.distribution}" data-id="${eff.id}" data-parameter="distribution" aria-label="Distribuzione di ${eff.name}" title="${usesHouseLayout(eff) ? 'Condivisa da Pressione sulle case e Bollette. ' : ''}Sposta l’effetto sul foglio. 50 ripristina la distribuzione di partenza." class="tech-slider eff-distribution flex-1 min-w-0" />
+                  <span class="font-mono-tech text-[10px] text-[#161616] w-7 text-right">${eff.distribution}</span>
+                </label>
+                ${optionsControl}
+                ${mixControl}
+                ${eff.mergeDots !== undefined ? `
+                  <label class="flex items-center gap-2 text-[11px] text-[#161616] cursor-pointer">
+                    <input type="checkbox" class="heat-merge" data-id="${eff.id}" ${eff.mergeDots ? 'checked' : ''} />
+                    Forma macchie ad alta intensità
+                  </label>` : ''}
               </div>
             `;
 
@@ -1738,7 +2531,7 @@
 
         // Update active counter
         const activeCount = state.effects.filter(e => e.active).length;
-        document.getElementById('activeCountLabel').textContent = `${activeCount} / 12 effetti attivi`;
+        document.getElementById('activeCountLabel').textContent = `${activeCount} / ${state.effects.length} effetti attivi`;
 
         // Attach listeners
         container.querySelectorAll('.eff-toggle').forEach(el => {
@@ -1751,14 +2544,28 @@
           });
         });
 
-        container.querySelectorAll('.eff-intensity').forEach(el => {
+        container.querySelectorAll('input[data-parameter]').forEach(el => {
           el.addEventListener('input', (e) => {
-            const eff = state.effects.find(x => x.id === e.target.dataset.id);
+            const { id, parameter } = e.target.dataset;
+            const eff = state.effects.find(x => x.id === id);
             if (!eff) return;
-            eff.intensity = Number(e.target.value);
-            e.target.nextElementSibling.textContent = eff.intensity;
+            eff[parameter] = Number(e.target.value);
+            e.target.nextElementSibling.textContent = parameterReadout(parameter, eff[parameter]);
+            if (usesHouseLayout(eff)) {
+              const other = state.effects.find(effect => usesHouseLayout(effect) && effect !== eff);
+              other[parameter] = eff[parameter];
+              const linkedInput = container.querySelector(`[data-id="${other.id}"][data-parameter="${parameter}"]`);
+              linkedInput.value = eff[parameter];
+              linkedInput.nextElementSibling.textContent = eff[parameter];
+            }
             rebuildGeometry();
           });
+        });
+
+        container.querySelector('.heat-merge').addEventListener('change', (e) => {
+          const effect = state.effects.find(effect => effect.id === e.target.dataset.id);
+          effect.mergeDots = e.target.checked;
+          rebuildGeometry();
         });
 
         container.querySelectorAll('.eff-logic').forEach(el => {
@@ -1769,6 +2576,13 @@
             rebuildGeometry();
           });
         });
+
+      }
+
+      function parameterReadout(parameter, value) {
+        if (parameter === 'brownfield') return `Greenfield ${100 - value}% / Brownfield ${value}%`;
+        if (parameter === 'contamination') return `Pulita ${100 - value}% / Sporca ${value}%`;
+        return value;
       }
 
       function updateSeedDisplays() {
@@ -1785,10 +2599,7 @@
       function mixRandomEffects() {
         // Randomly select 3 to 5 effects with balanced intensities
         const targetCount = 3 + Math.floor(Math.random() * 3);
-        const indices = state.effects
-          .map((effect, i) => ({ effect, i }))
-          .filter(entry => !entry.effect.randomExcluded)
-          .map(entry => entry.i);
+        const indices = state.effects.map((_, index) => index);
         for (let i = indices.length - 1; i > 0; i--) {
           const j = Math.floor(Math.random() * (i + 1));
           [indices[i], indices[j]] = [indices[j], indices[i]];
@@ -1796,13 +2607,16 @@
         const chosen = new Set(indices.slice(0, targetCount));
 
         state.effects.forEach((eff, idx) => {
-          if (eff.randomExcluded) return;
           eff.active = chosen.has(idx);
           eff.logic = eff.defaultLogic;
           if (eff.active) {
             eff.intensity = 45 + Math.floor(Math.random() * 45);
           }
         });
+        const activeHouse = state.effects.find(effect => usesHouseLayout(effect) && effect.active);
+        if (activeHouse) {
+          state.effects.filter(usesHouseLayout).forEach(effect => { effect.intensity = activeHouse.intensity; });
+        }
 
         state.seed = Math.floor(10000 + Math.random() * 89999);
         updateSeedDisplays();
@@ -1822,7 +2636,170 @@
         }, 2800);
       }
 
+      function bindBrushEvents() {
+        const frame = document.getElementById('sheetFrame');
+        const toggle = document.getElementById('brushToggle');
+        const controls = document.getElementById('brushControls');
+        const select = document.getElementById('brushEffect');
+        const undo = document.getElementById('brushUndo');
+        const brush = state.brush;
+        let pointerId = null;
+        let stroke;
+        let pendingFrame = 0;
+
+        for (const effect of state.effects) {
+          select.add(new Option(effect.name, effect.id));
+        }
+        select.value = brush.effectId;
+
+        function flushStroke() {
+          if (pendingFrame) cancelAnimationFrame(pendingFrame);
+          pendingFrame = 0;
+          rebuildGeometry();
+        }
+
+        function schedulePreview() {
+          if (pendingFrame) return;
+          pendingFrame = requestAnimationFrame(() => {
+            pendingFrame = 0;
+            rebuildGeometry();
+          });
+        }
+
+        function pointAt(event) {
+          const rect = frame.getBoundingClientRect();
+          return {
+            x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
+            y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
+          };
+        }
+
+        function extendStroke(event, done = false) {
+          const point = pointAt(event);
+          const last = stroke.points[stroke.points.length - 1];
+          const { width, height } = FORMATS[state.format];
+          const dx = point.x - last.x;
+          const dy = point.y - last.y;
+          const distance = Math.hypot(dx * width, dy * height);
+          if (!distance) return;
+          const spacing = Math.max(5, Math.min(width, height) / 85 * state.globalScale);
+          for (let step = spacing; step <= distance; step += spacing) {
+            stroke.points.push({ x: last.x + dx * step / distance, y: last.y + dy * step / distance });
+          }
+          if (done && distance % spacing > spacing * 0.48) stroke.points.push(point);
+          if (stroke.points[stroke.points.length - 1] !== last) schedulePreview();
+        }
+
+        toggle.addEventListener('click', () => {
+          brush.enabled = !brush.enabled;
+          toggle.setAttribute('aria-pressed', String(brush.enabled));
+          controls.hidden = !brush.enabled;
+          frame.style.touchAction = brush.enabled ? 'none' : '';
+          updateStageHint();
+        });
+
+        select.addEventListener('change', () => { brush.effectId = select.value; });
+        undo.addEventListener('click', () => {
+          brush.strokes.pop();
+          undo.disabled = brush.strokes.length === 0;
+          flushStroke();
+        });
+
+        frame.addEventListener('pointerdown', event => {
+          if (!brush.enabled || pointerId !== null || event.button !== 0) return;
+          event.preventDefault();
+          pointerId = event.pointerId;
+          frame.setPointerCapture(pointerId);
+          const effect = state.effects.find(effect => effect.id === brush.effectId);
+          if (!effect.active) {
+            effect.active = true;
+            renderEffectsPanel();
+          }
+          stroke = { effectId: usesHouseLayout(effect) ? HOUSE_LAYER_ID : effect.id, points: [pointAt(event)] };
+          brush.strokes.push(stroke);
+          undo.disabled = false;
+          state.anim.mode = 'static';
+          state.anim.progress = 1;
+          updateAnimStatusUI('MANUALE');
+          syncTimelineUI();
+          schedulePreview();
+        });
+        frame.addEventListener('pointermove', event => {
+          if (event.pointerId === pointerId) extendStroke(event);
+        });
+        function finishStroke(event) {
+          if (event.pointerId !== pointerId) return;
+          if (event.type === 'pointerup') extendStroke(event, true);
+          pointerId = null;
+          flushStroke();
+        }
+        frame.addEventListener('pointerup', finishStroke);
+        frame.addEventListener('pointercancel', finishStroke);
+        frame.addEventListener('lostpointercapture', finishStroke);
+      }
+
+      function updateStageHint() {
+        const hint = document.getElementById('epicenterHint');
+        hint.textContent = state.brush.enabled ? 'Trascina sul foglio per disegnare'
+          : state.zoneMode === 'poster' ? 'Composizione poster'
+          : "Clicca sul foglio per spostare l'epicentro";
+      }
+
+      function setZoneMode(mode) {
+        state.zoneMode = mode;
+        document.getElementById('zoneModeSelect').value = mode;
+        document.getElementById('zoneModeDesc').textContent = ZONE_DESCRIPTIONS[mode];
+        updateStageHint();
+      }
+
+      function updateTypographyControls() {
+        const { enabled, mode, position, logoColor } = state.typography;
+        document.getElementById('typoToggle').checked = enabled;
+        document.getElementById('typoModeSelect').value = mode;
+        document.getElementById('logoColorInput').value = logoColor;
+        document.getElementById('typoControls').classList.toggle('opacity-40', !enabled);
+        document.getElementById('logoColorControls').hidden = mode !== 'logo';
+        document.getElementById('typoTitleControls').hidden = mode !== 'text';
+        document.getElementById('typoControls').toggleAttribute('inert', !enabled);
+        document.querySelectorAll('.typo-pos-btn').forEach(btn => {
+          const active = btn.dataset.typoPos === position;
+          btn.setAttribute('aria-pressed', String(active));
+          btn.className = active
+            ? 'typo-pos-btn py-1 text-[10px] font-mono-tech uppercase rounded border border-[#161616] bg-[#161616] text-white cursor-pointer'
+            : 'typo-pos-btn py-1 text-[10px] font-mono-tech uppercase rounded border border-[#D6D6D2] bg-white text-[#161616] hover:border-[#161616] cursor-pointer';
+        });
+      }
+
+      function applyPosterPreset() {
+        const values = new Map([['emissioni', 82], ['flora-fauna', 42], ['bollette', 49]]);
+        for (const effect of state.effects) {
+          effect.active = values.has(effect.id);
+          if (effect.active) {
+            effect.logic = effect.defaultLogic;
+            effect.intensity = values.get(effect.id);
+            effect.distribution = DEFAULT_DISTRIBUTION;
+          }
+          if (usesHouseLayout(effect)) {
+            effect.intensity = values.get('bollette');
+            effect.distribution = DEFAULT_DISTRIBUTION;
+          }
+        }
+        state.typography.enabled = true;
+        state.typography.mode = 'logo';
+        state.typography.position = 'bottom-left';
+        setZoneMode('poster');
+        updateTypographyControls();
+        renderEffectsPanel();
+        rebuildGeometry();
+      }
+
+      function updateTypographyLayout() {
+        if (state.zoneMode === 'poster') rebuildGeometry();
+        else renderCanvas(state.anim.progress);
+      }
+
       function bindEvents() {
+        bindBrushEvents();
         // Top randomize & mix
         document.getElementById('btnRandomizeTop').addEventListener('click', () => {
           rollRandomSeed();
@@ -1876,10 +2853,10 @@
 
         // Composition Zone Mode
         document.getElementById('zoneModeSelect').addEventListener('change', (e) => {
-          state.zoneMode = e.target.value;
-          document.getElementById('zoneModeDesc').textContent = ZONE_DESCRIPTIONS[state.zoneMode];
+          setZoneMode(e.target.value);
           rebuildGeometry();
         });
+        document.getElementById('btnPosterPreset').addEventListener('click', applyPosterPreset);
 
         // Global Scale
         document.getElementById('globalScaleSlider').addEventListener('input', (e) => {
@@ -1899,12 +2876,18 @@
         });
 
         // Typography Overlay controls
-        const typoToggle = document.getElementById('typoToggle');
-        const typoControls = document.getElementById('typoControls');
-        typoToggle.addEventListener('change', (e) => {
+        document.getElementById('typoToggle').addEventListener('change', (e) => {
           state.typography.enabled = e.target.checked;
-          typoControls.classList.toggle('opacity-40', !state.typography.enabled);
-          typoControls.classList.toggle('pointer-events-none', !state.typography.enabled);
+          updateTypographyControls();
+          updateTypographyLayout();
+        });
+        document.getElementById('typoModeSelect').addEventListener('change', (e) => {
+          state.typography.mode = e.target.value;
+          updateTypographyControls();
+          updateTypographyLayout();
+        });
+        document.getElementById('logoColorInput').addEventListener('input', (e) => {
+          state.typography.logoColor = e.target.value;
           renderCanvas(state.anim.progress);
         });
 
@@ -1914,24 +2897,20 @@
         });
         document.getElementById('typoSubInput').addEventListener('input', (e) => {
           state.typography.subtitle = e.target.value;
-          renderCanvas(state.anim.progress);
+          updateTypographyLayout();
         });
         document.querySelectorAll('.typo-pos-btn').forEach(btn => {
           btn.addEventListener('click', () => {
             state.typography.position = btn.dataset.typoPos;
-            document.querySelectorAll('.typo-pos-btn').forEach(b => {
-              const active = b.dataset.typoPos === state.typography.position;
-              b.className = active
-                ? 'typo-pos-btn py-1 text-[10px] font-mono-tech uppercase rounded border border-[#161616] bg-[#161616] text-white cursor-pointer'
-                : 'typo-pos-btn py-1 text-[10px] font-mono-tech uppercase rounded border border-[#D6D6D2] bg-white text-[#161616] hover:border-[#161616] cursor-pointer';
-            });
-            renderCanvas(state.anim.progress);
+            updateTypographyControls();
+            updateTypographyLayout();
           });
         });
 
         // Interactive Epicenter Click on Sheet
         let markerTimer = null;
         document.getElementById('sheetFrame').addEventListener('click', (e) => {
+          if (state.brush.enabled || state.zoneMode === 'poster') return;
           const rect = e.currentTarget.getBoundingClientRect();
           const nx = clamp((e.clientX - rect.left) / rect.width, 0.08, 0.92);
           const ny = clamp((e.clientY - rect.top) / rect.height, 0.08, 0.92);
@@ -1945,9 +2924,7 @@
           markerTimer = setTimeout(() => marker.classList.add('opacity-0'), 1100);
 
           if (state.zoneMode !== 'epicenter') {
-            state.zoneMode = 'epicenter';
-            document.getElementById('zoneModeSelect').value = 'epicenter';
-            document.getElementById('zoneModeDesc').textContent = ZONE_DESCRIPTIONS.epicenter;
+            setZoneMode('epicenter');
           }
           rebuildGeometry();
         });
@@ -2044,9 +3021,9 @@
          ====================================================================== */
 
       window.addEventListener('load', () => {
-        preloadEffectAssets();
         renderEffectsPanel();
         bindEvents();
+        updateTypographyControls();
         updateSeedDisplays();
         fitSheetToStage();
         rebuildGeometry();
