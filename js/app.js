@@ -631,11 +631,15 @@
               const common = Math.sin(t * 7.1 + phase) * minDim * 0.071
                 + Math.sin(t * 13.8 + phase * 1.3) * minDim * 0.023;
               const local = Math.sin(t * 10.5 + bend) * minDim * 0.032
-                + (noise2D(t * 6.5, 2, bankSeed) - 0.5) * width * 0.26;
+                + (noise2D(t * 6.5, 2, bankSeed) - 0.5) * width * 0.26
+                + (noise2D(t * 21, 4, bankSeed) - 0.5) * width * 0.34;
               const across = (frame ? 0 : (trace - 0.5) * separation) + (common + local) * meander;
               const taper = 0.47 + 0.53 * Math.sin(t * Math.PI) ** 0.48;
-              const left = across - width * taper * (0.30 + noise2D(t * 5.1, 3, bankSeed) * 0.23);
-              const right = across + width * taper * (0.30 + noise2D(t * 5.1, 7, bankSeed) * 0.23);
+              // Sponde frastagliate: rumore ad alta frequenza, diverso per ciascun lato.
+              const rough = seed => (noise2D(t * 27, seed, bankSeed) - 0.5) * 0.34
+                + (noise2D(t * 67, seed + 1, bankSeed) - 0.5) * 0.22;
+              const left = across - width * taper * Math.max(0.12, 0.30 + noise2D(t * 5.1, 3, bankSeed) * 0.23 + rough(11));
+              const right = across + width * taper * Math.max(0.12, 0.30 + noise2D(t * 5.1, 7, bankSeed) * 0.23 + rough(13));
               upper.push({ x: along * dx - left * dy, y: along * dy + left * dx });
               lower.push({ x: along * dx - right * dy, y: along * dy + right * dx });
             }
@@ -1592,6 +1596,17 @@
         return inside;
       }
 
+      function pointInPolygon(points, px, py) {
+        let inside = false;
+        for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+          const a = points[j];
+          const b = points[i];
+          if ((a.y > py) !== (b.y > py) &&
+            a.x + (b.x - a.x) * (py - a.y) / (b.y - a.y) > px) inside = !inside;
+        }
+        return inside;
+      }
+
       function createAquiferRibbon(points, bounds, pitch, contamination, seed) {
         const f = value => Number(value.toFixed(2));
         const outline = points.map((point, i) => `${i ? 'L' : 'M'}${f(point.x)} ${f(point.y)}`).join('') + 'Z';
@@ -1606,11 +1621,40 @@
             const width = block * (0.63 + hash2D(col, row, seed + 5) * 0.29);
             const height = pitch * (0.72 + hash2D(col, row, seed + 11) * 0.14);
             if (!ribbonIntersectsStrip(points, x, y, width, height)) continue;
-            strips.push({
-              rank: hash2D(col, row, seed + 23), x, y, width, height,
-              d: `M${f(x)} ${f(y)}H${f(x + width)}V${f(y + height)}H${f(x)}Z`
-            });
+            // Ogni mattone è diviso in pixel: restano solo quelli con il centro
+            // dentro il tracciato, così il bordo segue la linea a gradini.
+            const rank = hash2D(col, row, seed + 23);
+            const cells = Math.max(1, Math.round(width / pitch));
+            const cell = width / cells;
+            let run = null;
+            const flush = () => {
+              if (!run) return;
+              const rx = x + run.from * cell;
+              const rw = (run.to - run.from) * cell;
+              strips.push({
+                rank, x: rx, y, width: rw, height,
+                d: `M${f(rx)} ${f(y)}H${f(rx + rw)}V${f(y + height)}H${f(rx)}Z`
+              });
+              run = null;
+            };
+            for (let c = 0; c < cells; c++) {
+              if (pointInPolygon(points, x + (c + 0.5) * cell, y + height / 2)) {
+                if (run) run.to = c + 1;
+                else run = { from: c, to: c + 1 };
+              } else {
+                flush();
+              }
+            }
+            flush();
           }
+        }
+        // Sequenza di comparsa: i mattoncini entrano uno alla volta lungo il percorso.
+        const horizontal = bounds.right - bounds.left >= bounds.bottom - bounds.top;
+        const start = horizontal ? bounds.left : bounds.top;
+        const span = Math.max(1, horizontal ? bounds.right - bounds.left : bounds.bottom - bounds.top);
+        for (const strip of strips) {
+          const along = horizontal ? strip.x + strip.width / 2 : strip.y + strip.height / 2;
+          strip.seq = clamp((along - start) / span * 0.88 + hash2D(Math.round(strip.x * 10), Math.round(strip.y * 10), seed + 31) * 0.12, 0, 1);
         }
         strips.sort((a, b) => a.rank - b.rank);
         const cutoff = Math.round(strips.length * contamination / 100);
@@ -1873,11 +1917,8 @@
         return 1 - Math.pow(1 - t, 3);
       }
 
-      function easeOutBack(t) {
-        const c1 = 1.70158;
-        const c3 = c1 + 1;
-        return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-      }
+      // true = gli elementi compaiono di colpo; false = crescita morbida (versione precedente).
+      const DIRECT_APPEAR = true;
 
       function computeItemAnim(item, globalProgress, W, H) {
         if (globalProgress >= 0.999) return { alpha: 1, scale: 1, dx: 0, dy: 0 };
@@ -1894,22 +1935,34 @@
           delay = item.order * 0.7;
         }
 
-        const windowSize = style === 'plotter-glitch' ? 0.06 : 0.28;
+        // Variazione propria di ogni elemento, stabile da un fotogramma all'altro.
+        const vary = (k) => {
+          const v = Math.sin((item.glitchDelay ?? item.order ?? 0) * 12.9898 * k + k * 78.233) * 43758.5453;
+          return v - Math.floor(v);
+        };
+
+        const windowSize = style === 'plotter-glitch' ? 0.07 + vary(1) * 0.17 : 0.28;
         const localT = clamp((globalProgress * (1 + windowSize) - delay) / windowSize, 0, 1);
 
         if (localT <= 0) return { alpha: 0, scale: 0, dx: 0, dy: 0 };
 
+        // Comparsa diretta: ogni elemento appare di colpo, intero, senza easing.
+        if (DIRECT_APPEAR) return { alpha: 1, scale: 1, dx: 0, dy: 0 };
+
         if (style === 'plotter-glitch') {
-          // Discrete crisp step like pen-plotter head
-          if (localT < 0.35) return { alpha: 0, scale: 0, dx: 0, dy: 0 };
-          const jitter = localT < 0.75 ? ((Math.sin(item.x * 13.7 + item.y) > 0 ? 3 : -3)) : 0;
-          return { alpha: 1, scale: 1, dx: jitter, dy: 0 };
+          // Comparsa a scala pulita, senza rimbalzo: ordine casuale e
+          // durata diversa per ogni elemento.
+          return {
+            alpha: Math.min(1, localT * 3),
+            scale: easeOutCubic(localT),
+            dx: 0, dy: 0
+          };
         }
 
         if (style === 'pop-scale') {
           return {
             alpha: Math.min(1, localT * 1.8),
-            scale: Math.max(0, easeOutBack(localT)),
+            scale: easeOutCubic(localT),
             dx: 0, dy: 0
           };
         }
@@ -1940,6 +1993,40 @@
 
       const canvas = document.getElementById('identityCanvas');
 
+      // La falda si anima mattoncino per mattoncino invece che come un blocco unico.
+      function drawRibbonCanvas(ctx, item, progress, W, H) {
+        const ribbon = item.ribbon;
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        if (item.rot) ctx.rotate(item.rot);
+        if (progress >= 0.999) {
+          for (const band of ribbon.bands) {
+            ctx.fillStyle = band.color;
+            ctx.fill(band.path);
+          }
+          ctx.restore();
+          return;
+        }
+        for (const band of ribbon.bands) {
+          ctx.fillStyle = band.color;
+          for (const strip of band.strips) {
+            const cx = strip.x + strip.width / 2;
+            const cy = strip.y + strip.height / 2;
+            const anim = computeItemAnim({
+              x: item.x + cx, y: item.y + cy,
+              order: clamp(item.order * 0.35 + strip.seq * 0.65, 0, 1),
+              glitchDelay: strip.rank
+            }, progress, W, H);
+            if (anim.alpha <= 0.01 || anim.scale <= 0.01) continue;
+            ctx.globalAlpha = anim.alpha;
+            const w = strip.width * anim.scale;
+            const h = strip.height * anim.scale;
+            ctx.fillRect(cx - w / 2 + anim.dx, cy - h / 2 + anim.dy, w, h);
+          }
+        }
+        ctx.restore();
+      }
+
       function drawShapeCanvas(ctx, item, anim) {
         if (anim.alpha <= 0.01 || anim.scale <= 0.01) return;
 
@@ -1954,7 +2041,6 @@
         ctx.strokeStyle = item.color;
 
         if (item.ribbon) {
-          ctx.clip(item.ribbon.clip);
           for (const band of item.ribbon.bands) {
             ctx.fillStyle = band.color;
             ctx.fill(band.path);
@@ -2260,6 +2346,10 @@
           for (let i = 0; i < layer.items.length; i++) {
             const item = layer.items[i];
             if (!isMarkOutsideTypography(item, artwork.reserved)) continue;
+            if (item.ribbon) {
+              drawRibbonCanvas(ctx, item, progress, W, H);
+              continue;
+            }
             const anim = computeItemAnim(item, progress, W, H);
             drawShapeCanvas(ctx, item, anim);
           }
@@ -2399,12 +2489,9 @@
             const tf = ` transform="${transform}"`;
             if (item.ribbon) {
               const ribbon = item.ribbon;
-              const clipId = `${effectId}-clip-${itemIndex}`;
               parts.push(`    <g${tf}>`);
-              parts.push(`      <defs><clipPath id="${clipId}"><path d="${ribbon.outline}"/></clipPath></defs>`);
-              parts.push(`      <g clip-path="url(#${clipId})">`);
-              for (const band of ribbon.bands) parts.push(`        <path d="${band.d}" fill="${band.color}"/>`);
-              parts.push('      </g>', '    </g>');
+              for (const band of ribbon.bands) parts.push(`      <path d="${band.d}" fill="${band.color}"/>`);
+              parts.push('    </g>');
               continue;
             }
             const motif = getVectorMotif(item);
