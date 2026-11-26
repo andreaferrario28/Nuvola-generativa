@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Video — The Clouded Issue</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/video.css">
+  <script src="js/studio-settings.js" defer></script>
+  <script src="js/video-export.js" defer></script>
+  <script src="js/video.js" defer></script>
+</head>
+<body>
+  <header class="video-header">
+    <strong>The Clouded Issue</strong>
+    <nav aria-label="Generatori"><a href="index.html">Studio micro-geometrie</a><a href="testo.html">Testo</a></nav>
+  </header>
+  <main class="video-workspace">
+    <section class="video-settings">
+      <h1>Video</h1>
+      <label for="video-format">Formato</label>
+      <select id="video-format">
+        <option value="1920x1080">16:9 · 1920 × 1080</option>
+        <option value="1080x1920">9:16 · 1080 × 1920</option>
+        <option value="1440x1080">4:3 · 1440 × 1080</option>
+        <option value="1080x1440">3:4 · 1080 × 1440</option>
+        <option value="1620x1080">3:2 · 1620 × 1080</option>
+        <option value="1080x1620">2:3 · 1080 × 1620</option>
+        <option value="1080x1080">1:1 · 1080 × 1080</option>
+      </select>
+      <label for="video-speed">Durata della transizione <output id="speed-value" for="video-speed">1,20 s</output></label>
+      <input type="range" id="video-speed" min=".35" max="3" step=".05" value="1.2">
+      <label for="video-size">Grandezza delle microgeometrie <output id="size-value" for="video-size">64 px</output></label>
+      <input type="range" id="video-size" min="24" max="144" step="4" value="64">
+      <fieldset>
+        <legend>Microgeometrie del pattern</legend>
+        <div id="video-effects"></div>
+      </fieldset>
+      <label class="video-transparent">
+        <input type="checkbox" id="video-transparent">
+        Solo microgeometrie su fondo trasparente
+      </label>
+      <label for="video-source">Video di prova <span>(facoltativo)</span></label>
+      <input id="video-source" type="file" accept="video/*">
+    </section>
+    <section class="video-output" aria-label="Anteprima della transizione">
+      <div class="video-toolbar">
+        <span id="video-dimensions"></span>
+        <div class="video-actions">
+          <button type="button" id="video-play" disabled>Riproduci</button>
+          <button type="button" id="video-download" disabled>Esporta MOV con trasparenza</button>
+        </div>
+      </div>
+      <div class="video-stage">
+        <div class="video-frame" id="video-frame">
+          <video id="video-underlay" muted playsinline hidden></video>
+          <canvas id="video-canvas" width="1920" height="1080" role="img" aria-label="Pattern della transizione Plotter / Glitch"></canvas>
+        </div>
+      </div>
+      <p id="video-status" role="status">Caricamento delle microgeometrie…</p>
+    </section>
+  </main>
+</body>
+</html>

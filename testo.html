@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Generatore testo — The Clouded Issue</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/testo.css">
+  <script src="js/studio-settings.js" defer></script>
+  <script src="js/video-export.js" defer></script>
+  <script src="js/testo.js" defer></script>
+</head>
+<body class="text-studio">
+  <header class="text-header">
+    <strong>The Clouded Issue</strong>
+    <nav aria-label="Generatori"><a href="index.html">Studio micro-geometrie</a> · <a href="video.html">Video</a></nav>
+  </header>
+  <main class="text-workspace">
+    <section class="text-controls">
+      <h1>Generatore testo</h1>
+      <label for="comment">Commento Instagram</label>
+      <textarea id="comment" rows="5" spellcheck="false">I data center inquinano aria e consumano enormi quantità di acqua</textarea>
+      <fieldset class="word-settings">
+        <legend>Parole non verificate</legend>
+        <p class="text-hint">Seleziona le parole nel commento e applica il glitch.</p>
+        <button type="button" id="markWords" disabled>Applica o rimuovi glitch</button>
+        <div id="markedWords"></div>
+        <p id="wordFeedback" class="text-hint" role="status"></p>
+      </fieldset>
+      <div class="text-fields">
+        <label>Formato
+          <select id="format">
+            <option value="1920x1080">16:9 · 1920 × 1080</option>
+            <option value="1080x1920">9:16 · 1080 × 1920</option>
+            <option value="1080x1080">1:1 · 1080 × 1080</option>
+          </select>
+        </label>
+        <label>Velocità
+          <select id="speed">
+            <option value="100">10 caratteri/s</option>
+            <option value="62" selected>16 caratteri/s</option>
+            <option value="40">25 caratteri/s</option>
+          </select>
+        </label>
+      </div>
+      <fieldset class="type-settings">
+        <legend>Impaginazione</legend>
+        <div class="text-fields">
+          <label>Dimensione testo (px)
+            <input type="number" id="font-size" min="1" step="1" placeholder="Automatica">
+          </label>
+          <label>A capo
+            <select id="line-breaks">
+              <option value="auto">Automatico</option>
+              <option value="manual">Solo con Invio</option>
+            </select>
+          </label>
+        </div>
+        <p class="text-hint">Premi Invio nel commento dove vuoi iniziare una nuova riga. Lascia vuota la dimensione per adattare il testo al formato.</p>
+      </fieldset>
+      <label class="text-background">Sfondo
+        <select id="background">
+          <option value="white">Bianco</option>
+          <option value="dark">Nero</option>
+        </select>
+      </label>
+      <fieldset>
+        <legend>Sciame per passaggio</legend>
+        <div id="effects"></div>
+        <button type="button" id="split" disabled>Dividi il passaggio</button>
+        <p class="text-hint">Posiziona il cursore nel commento dove vuoi cambiare il tema dello sciame.</p>
+      </fieldset>
+    </section>
+    <section class="text-output" aria-label="Anteprima dell’asset">
+      <div class="text-toolbar">
+        <span id="dimensions"></span>
+        <div class="text-actions">
+          <button type="button" id="play" disabled>Riproduci</button>
+          <button type="button" id="download" disabled>Esporta video</button>
+          <button type="button" id="download-alpha" disabled>Esporta MOV senza sfondo</button>
+        </div>
+      </div>
+      <div id="screen" class="text-screen">
+        <canvas id="preview" width="1920" height="1080" role="img" aria-label="Anteprima del commento"></canvas>
+      </div>
+      <p id="status" role="status">Caricamento del font e delle micro-geometrie…</p>
+    </section>
+  </main>
+</body>
+</html>
