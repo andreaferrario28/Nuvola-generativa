@@ -167,3 +167,12 @@
       box-shadow: 0 16px 40px -12px rgba(22, 22, 22, 0.16), 0 0 0 1px rgba(22, 22, 22, 0.12);
       transition: width 0.2s ease, height 0.2s ease;
     }
+
+.sheet-frame.moving-layer {
+  cursor: grab;
+  touch-action: none;
+}
+
+.sheet-frame.dragging-layer {
+  cursor: grabbing;
+}

@@ -103,7 +103,7 @@
           <span id="particleCountBadge">0 geometrie</span>
         </div>
         <div class="flex items-center gap-2">
-          <button type="button" id="brushToggle" aria-pressed="false" aria-controls="brushControls" class="px-2 py-1 rounded border border-[#D6D6D2] bg-white text-[#161616] aria-pressed:bg-[#161616] aria-pressed:text-white cursor-pointer">Pennello</button>
+          <button type="button" id="moveToggle" aria-pressed="false" aria-controls="moveControls" class="px-2 py-1 rounded border border-[#D6D6D2] bg-white text-[#161616] aria-pressed:bg-[#161616] aria-pressed:text-white cursor-pointer">Sposta parametri</button>
           <span id="epicenterHint" class="text-[10px] text-[#666662] hidden sm:inline"></span>
           <span id="recordingBadge" class="hidden items-center gap-1.5 px-2 py-0.5 rounded bg-[#FF5D38] text-white font-semibold text-[10px]">
             <span class="w-2 h-2 rounded-full bg-white rec-dot"></span>
@@ -111,12 +111,12 @@
           </span>
         </div>
       </div>
-      <div id="brushControls" hidden class="px-4 py-2 bg-[#F8F8F6] border-b border-[#D6D6D2] shrink-0 font-mono-tech text-[11px]">
+      <div id="moveControls" hidden class="px-4 py-2 bg-[#F8F8F6] border-b border-[#D6D6D2] shrink-0 font-mono-tech text-[11px]">
         <label class="inline-flex items-center gap-2 mr-3">
           <span>Parametro</span>
-          <select id="brushEffect" class="px-1.5 py-1 rounded border border-[#D6D6D2] bg-white text-[#161616]"></select>
+          <select id="moveEffect" class="px-1.5 py-1 rounded border border-[#D6D6D2] bg-white text-[#161616]"></select>
         </label>
-        <button type="button" id="brushUndo" disabled class="px-2 py-1 rounded border border-[#D6D6D2] bg-white text-[#161616] cursor-pointer disabled:opacity-40">Annulla tratto</button>
+        <button type="button" id="moveReset" disabled class="px-2 py-1 rounded border border-[#D6D6D2] bg-white text-[#161616] cursor-pointer disabled:opacity-40">Ripristina posizione</button>
       </div>
 
       <!-- Canvas Drafting Workspace -->
