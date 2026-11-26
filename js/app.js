@@ -54,17 +54,6 @@
           intensity: 55,
           iconSvg: '<circle cx="8" cy="8" r="5" fill="#fff" stroke="#0099BC" stroke-width="2.6"/>'
         },
-        {
-          id: 'traffico',
-          name: 'Traffico',
-          category: 'economia',
-          color: '#004E64',
-          shape: 'triangle',
-          defaultLogic: 'flow-paths',
-          active: true,
-          intensity: 65,
-          iconSvg: '<polygon points="8,2 14,13.5 2,13.5" fill="#004E64"/>'
-        },
 
         // AMBIENTE
         {
@@ -251,10 +240,10 @@
         grid: { visible: false, columns: 5, rows: 5, gap: 1.25, margin: 3 },
         typography: {
           enabled: true,
-          logoColor: CLOUD_EDITION_LOGO.color,
+          color: CLOUD_EDITION_LOGO.color,
           position: 'bottom-left',
           blocks: [{ text: 'EDIZIONE 0 /// LACCHIARELLA', font: 'Regular', size: 14,
-            color: '#555555', column: 1, row: 5, vertical: 'bottom' }]
+            column: 1, row: 5, vertical: 'bottom' }]
         },
         effects: EFFECTS_CONFIG.map(e => ({
           ...e, logic: e.defaultLogic
@@ -576,7 +565,7 @@
           }
         }
 
-        // 3. FLOW-PATHS (Traffico: triangles aligned along curved trajectories)
+        // 3. FLOW-PATHS (marks aligned along curved trajectories)
         else if (logic === 'flow-paths') {
           const numPaths = Math.max(1, Math.round(1 + intensity * 4.5));
           for (let p = 0; p < numPaths; p++) {
@@ -840,10 +829,14 @@
               [0.587, 0.539, false], [0.634, 0.608, false], [0.788, 0.696, false],
               [0.811, 0.727, false], [0.862, 0.846, false], [0.907, 0.900, false]]
           ];
-          const anchor = { x: W / 2, y: H / 2 };
-          const scale = Math.min(W / 0.86, H / 0.76);
-          const nodeSize = baseUnit * 1.15;
-          const strokeWidth = Math.max(1.1, baseUnit * 0.18);
+          const scale = Math.min(W / 0.78, H / 0.69) * 1.85;
+          // Mantiene visibili la dorsale sinistra e il raccordo superiore.
+          const anchor = {
+            x: Math.max(W / 2, (0.55 - 0.189) * scale + W * 0.045),
+            y: Math.max(H / 2, (0.58 - 0.264) * scale + H * 0.045)
+          };
+          const nodeSize = baseUnit * 2.65;
+          const strokeWidth = Math.max(1.5, baseUnit * 0.57);
           const edges = [];
           const junction = { x: (0.298 - 0.55) * scale + anchor.x,
             y: (0.264 - 0.58) * scale + anchor.y, order: 0.1 };
@@ -1454,7 +1447,7 @@
         const renderOrderIds = [
           'calore', 'consumo-suolo', 'falda', 'rumore',
           'emissioni', 'valore-immobiliare', 'posti-di-lavoro',
-          'flora-fauna', 'pressione-rete', 'bollette', 'traffico', 'tralicci'
+          'flora-fauna', 'pressione-rete', 'bollette', 'tralicci'
         ];
 
         const houses = state.effects.find(effect => effect.id === HOUSE_LAYER_ID);
@@ -1789,10 +1782,10 @@
       }
 
       function getTypographyArtwork(W, H) {
-        const { enabled, position, blocks } = state.typography;
+        const { enabled, position, blocks, color } = state.typography;
         const grid = getGridMetrics(W, H);
         const ratio = CLOUD_EDITION_LOGO.width / CLOUD_EDITION_LOGO.height;
-        const width = Math.min(W * 0.47, H * 0.48 * ratio);
+        const width = Math.min(W * (state.format === 'a4' ? 0.52 : 0.47), H * 0.48 * ratio);
         const height = width / ratio;
         const x = position === 'center' ? (W - width) / 2 : grid.inset;
         const y = position === 'center' ? (H - height) / 2
@@ -1807,7 +1800,7 @@
           const origin = textOrigin(block, grid, textLines.length, col, row);
           return textLines.map((text, i) => ({
             text, x: origin.x, y: origin.y + i * block.size * 1.1,
-            font: block.font, size: block.size, color: block.color
+            font: block.font, size: block.size, color
           }));
         });
         return { logo, lines };
@@ -1909,7 +1902,7 @@
           ctx.save();
           ctx.translate(x, y);
           ctx.scale(scale, scale);
-          ctx.fillStyle = state.typography.logoColor;
+          ctx.fillStyle = state.typography.color;
           for (const path of LOGO_PATHS) ctx.fill(path);
           ctx.restore();
         }
@@ -2190,7 +2183,7 @@
           parts.push('  <g id="typography-overlay">');
           if (artwork.logo) {
             const { x, y, scale } = artwork.logo;
-            parts.push(`    <g id="poster-logo" role="img" aria-label="The Clouded Issue" fill="${state.typography.logoColor}" transform="translate(${r(x)} ${r(y)}) scale(${scale.toFixed(6)})">`);
+            parts.push(`    <g id="poster-logo" role="img" aria-label="The Clouded Issue" fill="${state.typography.color}" transform="translate(${r(x)} ${r(y)}) scale(${scale.toFixed(6)})">`);
             for (const path of CLOUD_EDITION_LOGO.paths) parts.push(`      <path d="${path}"/>`);
             parts.push('    </g>');
           }
@@ -2670,7 +2663,6 @@
             <label class="layout-field">Font <select data-field="font">${fontOptions}</select></label>
             <div class="grid grid-cols-2 gap-2">
               <label class="layout-field">Corpo (px) <input type="number" data-field="size" min="6" max="500" /></label>
-              <label class="layout-field">Colore <input type="color" data-field="color" /></label>
               <label class="layout-field">Colonna <select data-field="column">${cells(state.grid.columns)}</select></label>
               <label class="layout-field">Riga <select data-field="row">${cells(state.grid.rows)}</select></label>
             </div>
@@ -2792,7 +2784,7 @@
         for (const [id, eventName, field, property] of [
           ['typoToggle', 'change', 'checked', 'enabled'],
           ['logoPosition', 'change', 'value', 'position'],
-          ['logoColorInput', 'input', 'value', 'logoColor']
+          ['typographyColorInput', 'input', 'value', 'color']
         ]) {
           document.getElementById(id).addEventListener(eventName, event => {
             state.typography[property] = event.target[field];
@@ -2802,7 +2794,7 @@
         document.getElementById('addTextBlock').addEventListener('click', () => {
           const blocks = state.typography.blocks;
           const row = (blocks.length - 1 + state.grid.rows) % state.grid.rows + 1;
-          blocks.push({ text: '', font: 'Regular', size: 36, color: state.typography.logoColor,
+          blocks.push({ text: '', font: 'Regular', size: 36,
             column: 1, row, vertical: 'top' });
           renderTextBlocks(blocks.length - 1);
         });
