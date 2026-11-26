@@ -176,3 +176,147 @@
 .sheet-frame.dragging-layer {
   cursor: grabbing;
 }
+
+@font-face {
+  font-family: 'Eiffel-Regular';
+  src: url('../Assets/fonts/BVHEiffelTrial-Regular.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-Italic';
+  src: url('../Assets/fonts/BVHEiffelTrial-Italic.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-Light';
+  src: url('../Assets/fonts/BVHEiffelTrial-Light.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-LightItalic';
+  src: url('../Assets/fonts/BVHEiffelTrial-LightItalic.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-Medium';
+  src: url('../Assets/fonts/BVHEiffelTrial-Medium.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-MediumItalic';
+  src: url('../Assets/fonts/BVHEiffelTrial-MediumItalic.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-Bold';
+  src: url('../Assets/fonts/BVHEiffelTrial-Bold.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-BoldItalic';
+  src: url('../Assets/fonts/BVHEiffelTrial-BoldItalic.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-Level-02';
+  src: url('../Assets/fonts/BVHEiffelTrial-Level-02.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-Level-01';
+  src: url('../Assets/fonts/BVHEiffelTrial-Level-01.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-Level01';
+  src: url('../Assets/fonts/BVHEiffelTrial-Level01.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-Level02';
+  src: url('../Assets/fonts/BVHEiffelTrial-Level02.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-Level03';
+  src: url('../Assets/fonts/BVHEiffelTrial-Level03.otf') format('opentype');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Eiffel-LevelAir';
+  src: url('../Assets/fonts/BVHEiffelTrial-LevelAir.otf') format('opentype');
+  font-display: swap;
+}
+
+.layout-grid {
+  position: absolute;
+  display: grid;
+  pointer-events: none;
+}
+.layout-grid[hidden] {
+  display: none;
+}
+.layout-grid > span {
+  background: rgba(255, 51, 25, 0.22);
+}
+
+.settings-label {
+  color: var(--muted);
+  font: 600 10px var(--font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.layout-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.layout-field input,
+.layout-field select,
+.text-block-editor textarea,
+.layout-button {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: white;
+  color: var(--ink);
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.layout-field input[type="color"] {
+  width: 100%;
+  height: 30px;
+  padding: 2px 4px;
+}
+
+.text-block-editor {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.layout-button {
+  cursor: pointer;
+}
+.layout-button:hover {
+  border-color: var(--ink);
+}
+
+#identityCanvas {
+  touch-action: none;
+}
+
+.sheet-frame.text-grab {
+  cursor: grab;
+}
+
+.sheet-frame.dragging-text {
+  cursor: grabbing;
+}
