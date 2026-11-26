@@ -203,9 +203,11 @@
 
       const FORMATS = {
         a4:     { width: 900,  height: 1200, label: '900 × 1200 px (3:4)' },
+        poster: { width: 1000, height: 1400, label: '50 × 70 cm (5:7)', printSize: [50, 70] },
         square: { width: 1080, height: 1080, label: '1080 × 1080 px (1:1)' },
+        post:   { width: 1080, height: 1350, label: '1080 × 1350 px (4:5)' },
         story:  { width: 720,  height: 1280, label: '720 × 1280 px (9:16)' },
-        banner: { width: 1280, height: 720,  label: '1280 × 720 px (16:9)' }
+        banner: { width: 1920, height: 1080, label: '1920 × 1080 px (16:9)' }
       };
 
       const TEXT_FONTS = {
@@ -555,9 +557,7 @@
                 lower.push({ x: point.x + normalX * right, y: point.y + normalY * right });
               }
             }
-            const points = upper.concat(lower.reverse());
-            const bounds = getPointBounds(points);
-            const ribbon = createAquiferRibbon(points, bounds, pitch, effect.contamination, bankSeed);
+            const ribbon = createAquiferRibbon(upper, lower, pitch, effect.contamination, bankSeed);
             items.push({
               shape: effect.shape, x: W / 2, y: H / 2, color, size: width,
               order: trace * 0.26, ribbon
@@ -1377,7 +1377,9 @@
         return inside;
       }
 
-      function createAquiferRibbon(points, bounds, pitch, contamination, seed) {
+      function createAquiferRibbon(upper, lower, pitch, contamination, seed) {
+        const points = upper.concat(lower.slice().reverse());
+        const bounds = getPointBounds(points);
         const f = value => Number(value.toFixed(2));
         const outline = points.map((point, i) => `${i ? 'L' : 'M'}${f(point.x)} ${f(point.y)}`).join('') + 'Z';
         const block = pitch * 5.1;
@@ -1401,13 +1403,11 @@
             });
           }
         }
-        // Sequenza di comparsa: i mattoncini entrano uno alla volta lungo il percorso.
-        const horizontal = bounds.right - bounds.left >= bounds.bottom - bounds.top;
-        const start = horizontal ? bounds.left : bounds.top;
-        const span = Math.max(1, horizontal ? bounds.right - bounds.left : bounds.bottom - bounds.top);
-        for (const strip of strips) {
-          const along = horizontal ? strip.x + strip.width / 2 : strip.y + strip.height / 2;
-          strip.seq = clamp((along - start) / span * 0.88 + hash2D(Math.round(strip.x * 10), Math.round(strip.y * 10), seed + 31) * 0.12, 0, 1);
+        const distances = [0];
+        for (let i = 1; i < upper.length; i++) {
+          const dx = (upper[i].x + lower[i].x - upper[i - 1].x - lower[i - 1].x) / 2;
+          const dy = (upper[i].y + lower[i].y - upper[i - 1].y - lower[i - 1].y) / 2;
+          distances.push(distances[i - 1] + Math.hypot(dx, dy));
         }
         strips.sort((a, b) => a.rank - b.rank);
         const cutoff = Math.round(strips.length * contamination / 100);
@@ -1415,12 +1415,12 @@
           createAquiferBand('#774400', strips.slice(0, cutoff)),
           createAquiferBand('#2CC6C6', strips.slice(cutoff))
         ].filter(band => band.d);
-        return { outline, clip: new Path2D(outline), bands };
+        return { outline, clip: new Path2D(outline), bands, upper, lower, distances };
       }
 
       function createAquiferBand(color, strips) {
         const d = strips.map(strip => strip.d).join('');
-        return { color, strips, d, path: new Path2D(d) };
+        return { color, d, path: new Path2D(d) };
       }
 
       function positionLayer(source, position, W, H) {
@@ -1567,37 +1567,36 @@
 
       const canvas = document.getElementById('identityCanvas');
 
-      // La falda si anima mattoncino per mattoncino invece che come un blocco unico.
-      function drawRibbonCanvas(ctx, item, progress, W, H) {
-        const ribbon = item.ribbon;
+      function drawRibbonCanvas(ctx, item, progress) {
+        const { clip, bands, upper, lower, distances } = item.ribbon;
+        const delay = item.order * .38;
+        const flow = clamp((progress - delay) / (1 - delay), 0, 1);
+        if (flow === 0) return;
+
         ctx.save();
         ctx.translate(item.x, item.y);
         if (item.rot) ctx.rotate(item.rot);
-        ctx.clip(ribbon.clip);
-        if (progress >= 0.999) {
-          for (const band of ribbon.bands) {
-            ctx.fillStyle = band.color;
-            ctx.fill(band.path);
+        if (flow >= 1) {
+          ctx.clip(clip);
+        } else {
+          const distance = flow * distances.at(-1);
+          const end = distances.findIndex(value => value >= distance);
+          const last = end - 1;
+          const fraction = (distance - distances[last]) / (distances[end] - distances[last]);
+          ctx.beginPath();
+          ctx.moveTo(upper[0].x, upper[0].y);
+          for (let i = 1; i <= last; i++) ctx.lineTo(upper[i].x, upper[i].y);
+          for (const bank of [upper, lower]) {
+            ctx.lineTo(bank[last].x + (bank[end].x - bank[last].x) * fraction,
+              bank[last].y + (bank[end].y - bank[last].y) * fraction);
           }
-          ctx.restore();
-          return;
+          for (let i = last; i >= 0; i--) ctx.lineTo(lower[i].x, lower[i].y);
+          ctx.closePath();
+          ctx.clip();
         }
-        for (const band of ribbon.bands) {
+        for (const band of bands) {
           ctx.fillStyle = band.color;
-          for (const strip of band.strips) {
-            const cx = strip.x + strip.width / 2;
-            const cy = strip.y + strip.height / 2;
-            const anim = computeItemAnim({
-              x: item.x + cx, y: item.y + cy,
-              order: clamp(item.order * 0.35 + strip.seq * 0.65, 0, 1),
-              glitchDelay: strip.rank
-            }, progress, W, H);
-            if (anim.alpha <= 0.01 || anim.scale <= 0.01) continue;
-            ctx.globalAlpha = anim.alpha;
-            const w = strip.width * anim.scale;
-            const h = strip.height * anim.scale;
-            ctx.fillRect(cx - w / 2 + anim.dx, cy - h / 2 + anim.dy, w, h);
-          }
+          ctx.fill(band.path);
         }
         ctx.restore();
       }
@@ -1915,14 +1914,28 @@
         ctx.restore();
       }
 
-      function renderCanvas(progress, targetCanvas = canvas) {
+      function fitsOutsideLogo(effectId, item, logo) {
+        if (!logo || (effectId !== 'calore' && effectId !== 'valore-immobiliare')) return true;
+        const { x, y, rot = 0 } = item;
+        const radius = item.size * HALFTONE_RADIUS_RATIO;
+        const hw = effectId === 'calore' ? radius
+          : Math.abs(Math.cos(rot)) * item.w * .51 + Math.abs(Math.sin(rot)) * item.h * .48;
+        const hh = effectId === 'calore' ? radius
+          : Math.abs(Math.sin(rot)) * item.w * .51 + Math.abs(Math.cos(rot)) * item.h * .48;
+        return !intersects({ left: x - hw, right: x + hw, top: y - hh, bottom: y + hh },
+          { left: logo.x, right: logo.x + logo.width, top: logo.y, bottom: logo.y + logo.height });
+      }
+
+      function renderCanvas(progress, targetCanvas = canvas, pixelSize) {
         const { width: W, height: H } = FORMATS[state.format];
-        if (targetCanvas.width !== W || targetCanvas.height !== H) {
-          targetCanvas.width = W;
-          targetCanvas.height = H;
+        const [pixelWidth, pixelHeight] = pixelSize ?? [W, H];
+        if (targetCanvas.width !== pixelWidth || targetCanvas.height !== pixelHeight) {
+          targetCanvas.width = pixelWidth;
+          targetCanvas.height = pixelHeight;
         }
 
         const ctx = targetCanvas.getContext('2d');
+        ctx.setTransform(pixelWidth / W, 0, 0, pixelHeight / H, 0, 0);
         ctx.clearRect(0, 0, W, H);
 
         const bgInfo = STUDIO_BACKGROUNDS[state.background];
@@ -1933,7 +1946,7 @@
 
         const artwork = getTypographyArtwork(W, H);
         // Draw all active layers
-        state.layers.forEach((layer) => {
+        state.layers.forEach((layer, effectId) => {
           // 1. Connector lines (e.g. Tralicci vectors)
           for (let i = 0; i < layer.lines.length; i++) {
             const ln = layer.lines[i];
@@ -1961,9 +1974,10 @@
           for (let i = 0; i < layer.items.length; i++) {
             const item = layer.items[i];
             if (item.ribbon) {
-              drawRibbonCanvas(ctx, item, progress, W, H);
+              drawRibbonCanvas(ctx, item, progress);
               continue;
             }
+            if (!fitsOutsideLogo(effectId, item, artwork.logo)) continue;
             const anim = computeItemAnim(item, progress, W, H);
             drawShapeCanvas(ctx, item, anim);
           }
@@ -2064,14 +2078,15 @@
          ====================================================================== */
 
       function buildSVGString() {
-        const { width: W, height: H } = FORMATS[state.format];
+        const { width: W, height: H, printSize } = FORMATS[state.format];
         const bgInfo = STUDIO_BACKGROUNDS[state.background];
         const r = n => Number(n.toFixed(2));
         const artwork = getTypographyArtwork(W, H);
 
         let parts = [];
         parts.push(`<?xml version="1.0" encoding="UTF-8"?>`);
-        parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" overflow="hidden">`);
+        const [width, height] = printSize ? printSize.map(cm => cm + 'cm') : [W, H];
+        parts.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${width}" height="${height}" overflow="hidden">`);
 
         if (bgInfo.hex) {
           parts.push(`  <g id="background"><rect width="${W}" height="${H}" fill="${bgInfo.hex}"/></g>`);
@@ -2089,6 +2104,7 @@
 
           // Micro-geometries
           for (const [itemIndex, item] of layer.items.entries()) {
+            if (!fitsOutsideLogo(effectId, item, artwork.logo)) continue;
             const s = item.size;
             const rotDeg = item.rot ? r(item.rot * 180 / Math.PI) : 0;
             const transform = `translate(${r(item.x)},${r(item.y)})${rotDeg ? ` rotate(${rotDeg})` : ''}`;
@@ -2249,7 +2265,9 @@
         try {
           await document.fonts.ready;
           const exportCanvas = document.createElement('canvas');
-          renderCanvas(state.anim.progress, exportCanvas);
+          const { printSize } = FORMATS[state.format];
+          const pixelSize = printSize?.map(cm => Math.round(cm / 2.54 * 300));
+          renderCanvas(state.anim.progress, exportCanvas, pixelSize);
           exportCanvas.toBlob(blob => {
             if (!blob) return showToast('Errore esportazione PNG');
             downloadBlob(blob, `the-clouded-issue.png`);

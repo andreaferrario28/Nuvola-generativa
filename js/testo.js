@@ -26,6 +26,7 @@
   const wordGlitchDuration = 2400;
   const wordGlitchStepDuration = 50;
   const wordGlitchPattern = [true, false, true, true, false, true, false, false, true, true, true, false, true];
+  const lowerThirdHold = 3000;
   const house = new Path2D('M2 3h6v2h6v7h-4v2H2z');
   const cursorParticles = [
     { x: 0, y: .55, size: 1 },
@@ -48,15 +49,20 @@
   const dimensions = $('dimensions');
   const status = $('status');
   const playbackControls = [$('play'), $('download'), $('download-alpha')];
+  const mode = $('mode');
+  const plateColor = $('plate-color');
+  const textColor = $('text-color');
+  const resetTextColor = $('reset-text-color');
   const background = $('background');
   const fontSize = $('font-size');
   const lineBreaks = $('line-breaks');
-  const settings = [comment, $('format'), $('speed'), background, fontSize, lineBreaks];
+  const settings = [comment, mode, plateColor, textColor, $('format'), $('speed'), background, fontSize, lineBreaks];
   const split = $('split');
   const markWords = $('markWords');
   const markedWordsList = $('markedWords');
   const wordFeedback = $('wordFeedback');
   const markedWords = new Map();
+  let customTextColor = false;
   let runs = [];
   let layout;
   let animation;
@@ -208,6 +214,8 @@
     const glyphs = Array.from(segmenter.segment(text));
     const margin = Math.round(width * .1);
     const manualBreaks = lineBreaks.value === 'manual';
+    const usePlate = mode.value === 'lower-third';
+    const lastVisibleCount = glyphs.findLastIndex(glyph => /\S/u.test(glyph.segment)) + 1;
 
     function measureLayout(size) {
       ctx.font = `500 ${size}px Eiffel`;
@@ -216,11 +224,18 @@
       const cursorHeight = cursorAscent + (cap.actualBoundingBoxDescent || 0);
       const cursorScale = cursorHeight / (cursorBottom - cursorTop);
       const cursorWidth = (cursorRight - cursorLeft) * cursorScale;
-      const usableWidth = width - 2 * margin - size * .12 - cursorWidth;
+      const pad = usePlate ? size * .24 : 0;
+      const step = usePlate ? size * .62 : 0;
+      const usableWidth = width - 2 * margin - size * .12 - cursorWidth - 2 * pad - step;
       const lines = wrap(glyphs, manualBreaks ? Infinity : Math.max(0, usableWidth));
-      const overflow = lines.length * size * 1.16 > height * .78 ||
+      if (usePlate) {
+        while (lines.length > 1 && lines.at(-1).start >= lastVisibleCount) lines.pop();
+      }
+      const lineHeight = size * (usePlate ? 1.26 : 1.16);
+      const top = usePlate ? height * .88 - lines.length * lineHeight : (height - lines.length * lineHeight) / 2;
+      const overflow = lines.length * lineHeight > height * (usePlate ? .66 : .78) ||
         lines.some(line => ctx.measureText(line.text.trimEnd()).width > usableWidth);
-      return { lines, size, cursorAscent, cursorScale, overflow };
+      return { lines, size, cursorAscent, cursorScale, overflow, top, lineHeight, pad, step, usePlate };
     }
 
     let fitted;
@@ -228,7 +243,7 @@
       fitted = measureLayout(Math.max(1, Math.round(fontSize.valueAsNumber)));
     } else {
       let low = 0;
-      let high = Math.round(Math.min(width, height) * .105) + 1;
+      let high = Math.round(Math.min(width, height) * (usePlate ? .065 : .105)) + 1;
       while (high - low > 1) {
         const size = Math.floor((high + low) / 2);
         const candidate = measureLayout(size);
@@ -242,7 +257,6 @@
     }
 
     if (fitted) dimensions.textContent += ` · ${fitted.size} px`;
-    const lastVisibleCount = glyphs.findLastIndex(glyph => /\S/u.test(glyph.segment)) + 1;
     layout = fitted && { ...fitted, glyphs, margin, width, height, lastVisibleCount };
     canvas.setAttribute('aria-label', text.trim() ? `Anteprima del commento: ${text}` : 'Anteprima vuota');
   }
@@ -364,7 +378,19 @@
     return elapsed >= wordGlitchDuration || wordGlitchPattern[step % wordGlitchPattern.length];
   }
 
-  function render(count, visible = cursorIndices, glitchElapsed, words = [], transparent = false, neutralIds = neutralEffectIds) {
+  function contrastingInk(hex) {
+    const [r, g, b] = hex.slice(1).match(/../g).map(channel => {
+      const value = parseInt(channel, 16) / 255;
+      return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+    });
+    return r * .2126 + g * .7152 + b * .0722 > .179 ? '#000000' : '#FFFFFF';
+  }
+
+  function automaticInk(usePlate) {
+    return usePlate ? contrastingInk(plateColor.value) : STUDIO_BACKGROUNDS[background.value].ink;
+  }
+
+  function render(count, visible = cursorIndices, glitchElapsed, words = [], transparent = false, neutralIds = neutralEffectIds, erasing = false) {
     const colors = STUDIO_BACKGROUNDS[background.value];
     if (transparent) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -374,17 +400,18 @@
     }
     if (!layout || !runs.length) return;
 
-    const { glyphs, lines, size, margin, height, cursorAscent, cursorScale, lastVisibleCount } = layout;
+    const { glyphs, lines, size, margin, top, lineHeight, pad, step, usePlate, cursorAscent, cursorScale, lastVisibleCount } = layout;
     const finished = count === glyphs.length;
-    const lineHeight = size * 1.16;
-    const top = (height - lines.length * lineHeight) / 2;
     const font = `500 ${size}px Eiffel`;
+    const ink = customTextColor ? textColor.value : automaticInk(usePlate);
     ctx.font = font;
     ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = colors.ink;
+    ctx.fillStyle = ink;
     const wordsVisible = glitchElapsed !== undefined && wordGlitchVisible(glitchElapsed);
     let cursorX = margin;
     let cursorY = top;
+    let plateRight = 0;
+    const plate = plateColor.value;
 
     for (const [index, line] of lines.entries()) {
       if (line.start > count) break;
@@ -392,26 +419,49 @@
       const prefixEnd = length === line.length ? line.text.length :
         glyphs[line.start + length].index - glyphs[line.start].index;
       const prefix = line.text.slice(0, prefixEnd);
-      const baseline = top + index * lineHeight + size * .89;
-      if (glitchElapsed !== undefined && words.length && prefix.length) {
-        drawGlitchedLine(prefix, glyphs[line.start].index, margin, baseline, font, size, wordsVisible, words);
-      } else {
-        ctx.fillText(prefix, margin, baseline);
+      const left = margin + (index ? step : 0);
+      const x = left + pad;
+      const y = top + index * lineHeight;
+      const baseline = y + size * (usePlate ? .91 : .89);
+      if (usePlate) {
+        if (!prefix.trim()) continue;
+        const measure = ctx.measureText(prefix.trimEnd());
+        const right = Math.max(measure.width, measure.actualBoundingBoxRight);
+        const width = right + 2 * pad;
+        if (left + width >= plateRight) {
+          plateRight = left + width;
+          cursorY = baseline - cursorAscent;
+        }
+        ctx.save();
+        ctx.fillStyle = plate;
+        ctx.fillRect(left, y, width, lineHeight);
+        ctx.fillStyle = ink;
       }
-      if (!finished || line.start < lastVisibleCount) {
+      if (glitchElapsed !== undefined && words.length && prefix.length) {
+        drawGlitchedLine(prefix, glyphs[line.start].index, x, baseline, font, size, wordsVisible, words);
+      } else {
+        ctx.fillText(prefix, x, baseline);
+      }
+      if (usePlate) {
+        ctx.restore();
+      } else if (!finished || line.start < lastVisibleCount) {
         const cursorText = finished ? prefix.trimEnd() : prefix;
-        cursorX = margin + ctx.measureText(cursorText).width;
+        cursorX = x + ctx.measureText(cursorText).width;
         cursorY = baseline - cursorAscent;
       }
     }
 
-    drawCursor(effectAt(count), cursorX + size * .12, cursorY, cursorScale, visible, neutralIds);
+    if (!usePlate || plateRight > 0) {
+      const swarm = usePlate && (finished || erasing) && visible.length === 0 ? cursorIndices.slice(0, 1) : visible;
+      drawCursor(effectAt(count), (usePlate ? plateRight : cursorX) + size * .12, cursorY, cursorScale, swarm, neutralIds);
+    }
   }
 
   function setControls() {
     for (const control of playbackControls) control.disabled = !ready || recording || !layout || !runs.length;
     split.disabled = !ready || recording || !runs.length;
     markWords.disabled = !ready || recording;
+    resetTextColor.disabled = recording || !customTextColor;
     for (const button of markedWordsList.querySelectorAll('button')) button.disabled = recording;
     for (const control of [...settings, ...$('effects').querySelectorAll('select')]) control.disabled = recording;
   }
@@ -419,11 +469,14 @@
   function createAnimation(transparent = false) {
     const speed = Number($('speed').value);
     const length = layout.glyphs.length;
+    const { usePlate, glyphs } = layout;
+    const eraseInterval = Math.max(34, speed / 2);
+    const eraseStops = usePlate ? glyphs.flatMap((glyph, index) => /\S/u.test(glyph.segment) ? [index + 1] : []) : [];
     let count = 0;
     let nextCharacter = 350 + speed;
     let typingEnd;
     const words = [...markedWords.values()].sort((a, b) => a.index - b.index);
-    const hold = words.length ? wordGlitchDuration : 1500;
+    const hold = usePlate ? lowerThirdHold : words.length ? wordGlitchDuration : 1500;
     const advanceCursor = createCursorSequence();
     const neutralMix = createNeutralMix();
     let nextNeutralStep = neutralStepDuration;
@@ -442,14 +495,19 @@
         nextCursorStep = now + cursorStepDuration * (visible.length === cursorParticles.length ? 2 : 1);
       }
 
-      const neutral = !effectAt(count);
+      const elapsed = typingEnd === undefined ? undefined : now - typingEnd;
+      const erasing = usePlate && elapsed !== undefined && elapsed >= hold;
+      const visibleCount = erasing
+        ? eraseStops[eraseStops.length - 2 - Math.floor((elapsed - hold) / eraseInterval)] ?? 0
+        : count;
+      const neutral = !effectAt(visibleCount);
       if (neutral && now >= nextNeutralStep) {
         neutralMix.advance();
         nextNeutralStep = now + neutralStepDuration;
       }
 
-      const elapsed = typingEnd === undefined ? undefined : now - typingEnd;
-      render(count, visible, elapsed, words, transparent, neutralMix.ids);
+      render(visibleCount, visible, elapsed, words, transparent, neutralMix.ids, erasing);
+      if (usePlate) return erasing && visibleCount === 0;
       return elapsed !== undefined && elapsed >= hold && (neutral || visible.length === cursorParticles.length);
     };
   }
@@ -463,7 +521,7 @@
     function frame(now) {
       const finished = step(now - start);
       if (onComplete && finished) onComplete();
-      else animation = requestAnimationFrame(frame);
+      else if (!finished || !layout.usePlate) animation = requestAnimationFrame(frame);
     }
 
     animation = requestAnimationFrame(frame);
@@ -473,8 +531,14 @@
     if (ready && layout && runs.length) animate();
   }
 
+  function syncTextColor() {
+    if (!customTextColor) textColor.value = automaticInk(mode.value === 'lower-third');
+  }
+
   function refresh() {
     cancelAnimationFrame(animation);
+    $('plate-color-field').hidden = mode.value !== 'lower-third';
+    syncTextColor();
     buildLayout();
     setControls();
     status.textContent = '';
@@ -485,6 +549,10 @@
     }
     if (layout && runs.length) play();
     else render(0);
+  }
+
+  function exportName() {
+    return 'clouded-issue-' + (layout.usePlate ? 'sottopancia-' : 'commento-') + $('format').value;
   }
 
   function exportVideo() {
@@ -524,7 +592,7 @@
         const url = URL.createObjectURL(new Blob(chunks, { type }));
         const link = document.createElement('a');
         link.href = url;
-        link.download = `clouded-issue-commento-${$('format').value}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
+        link.download = `${exportName()}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         status.textContent = 'Video esportato.';
@@ -565,7 +633,7 @@
       const url = URL.createObjectURL(movie);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'clouded-issue-commento-' + $('format').value + '-alpha.mov';
+      link.download = exportName() + '-alpha.mov';
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
       status.textContent = 'MOV senza sfondo esportato · 30 fps.';
@@ -611,6 +679,26 @@
       loadComment();
     });
     markWords.addEventListener('click', toggleSelectedWords);
+    mode.addEventListener('change', refresh);
+    function selectTextColor() {
+      customTextColor = true;
+      setControls();
+    }
+    textColor.addEventListener('input', selectTextColor);
+    textColor.addEventListener('change', () => {
+      selectTextColor();
+      play();
+    });
+    resetTextColor.addEventListener('click', () => {
+      customTextColor = false;
+      syncTextColor();
+      setControls();
+      play();
+    });
+    plateColor.addEventListener('change', () => {
+      syncTextColor();
+      play();
+    });
     $('format').addEventListener('change', refresh);
     fontSize.addEventListener('change', () => {
       if (Number.isFinite(fontSize.valueAsNumber)) {

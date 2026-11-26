@@ -18,6 +18,20 @@
   <main class="text-workspace">
     <section class="text-controls">
       <h1>Generatore testo</h1>
+      <label>Modalità
+        <select id="mode">
+          <option value="text">Testo</option>
+          <option value="lower-third">Sottopancia</option>
+        </select>
+      </label>
+      <div class="color-field">
+        <label for="text-color">Colore testo</label>
+        <input type="color" id="text-color" value="#161616">
+        <button type="button" id="reset-text-color" disabled>Automatico</button>
+      </div>
+      <label class="color-field" id="plate-color-field" hidden>Colore sottopancia
+        <input type="color" id="plate-color" value="#ff3319">
+      </label>
       <label for="comment">Commento Instagram</label>
       <textarea id="comment" rows="5" spellcheck="false">I data center inquinano aria e consumano enormi quantità di acqua</textarea>
       <fieldset class="word-settings">
@@ -32,6 +46,7 @@
           <select id="format">
             <option value="1920x1080">16:9 · 1920 × 1080</option>
             <option value="1080x1920">9:16 · 1080 × 1920</option>
+            <option value="1080x1350">4:5 · 1080 × 1350</option>
             <option value="1080x1080">1:1 · 1080 × 1080</option>
           </select>
         </label>

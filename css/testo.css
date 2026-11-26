@@ -40,6 +40,19 @@
 }
 
 .text-controls h1 { margin: 0 0 1.5rem; font-size: 1.55rem; }
+.text-controls label:has(#mode) { display: block; margin-bottom: 1rem; }
+.color-field:not([hidden]) { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.color-field input { width: 3rem; height: 2rem; margin-left: auto; cursor: pointer; }
+.color-field button {
+  padding: .4rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: white;
+  color: var(--ink);
+  font: .75rem var(--font-mono);
+  cursor: pointer;
+}
+.color-field button:disabled { opacity: .45; cursor: default; }
 .text-controls textarea, .text-controls select, .text-controls input[type="number"], .text-actions button, #split, .word-settings button {
   display: block;
   width: 100%;
