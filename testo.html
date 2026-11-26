@@ -7,12 +7,13 @@
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="css/testo.css">
   <script src="js/studio-settings.js" defer></script>
+  <script src="js/video-export.js" defer></script>
   <script src="js/testo.js" defer></script>
 </head>
 <body class="text-studio">
   <header class="text-header">
     <strong>The Clouded Issue</strong>
-    <a href="index.html">Studio micro-geometrie ↗</a>
+    <nav aria-label="Generatori"><a href="index.html">Studio micro-geometrie</a> · <a href="video.html">Video</a></nav>
   </header>
   <main class="text-workspace">
     <section class="text-controls">
@@ -42,6 +43,21 @@
           </select>
         </label>
       </div>
+      <fieldset class="type-settings">
+        <legend>Impaginazione</legend>
+        <div class="text-fields">
+          <label>Dimensione testo (px)
+            <input type="number" id="font-size" min="1" step="1" placeholder="Automatica">
+          </label>
+          <label>A capo
+            <select id="line-breaks">
+              <option value="auto">Automatico</option>
+              <option value="manual">Solo con Invio</option>
+            </select>
+          </label>
+        </div>
+        <p class="text-hint">Premi Invio nel commento dove vuoi iniziare una nuova riga. Lascia vuota la dimensione per adattare il testo al formato.</p>
+      </fieldset>
       <label class="text-background">Sfondo
         <select id="background">
           <option value="white">Bianco</option>
@@ -61,6 +77,7 @@
         <div class="text-actions">
           <button type="button" id="play" disabled>Riproduci</button>
           <button type="button" id="download" disabled>Esporta video</button>
+          <button type="button" id="download-alpha" disabled>Esporta MOV senza sfondo</button>
         </div>
       </div>
       <div id="screen" class="text-screen">

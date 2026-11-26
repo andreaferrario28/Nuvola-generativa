@@ -35,6 +35,8 @@
   const heatParticleScales = [.84, 1, .92];
   const cursorIndices = cursorParticles.map((_, index) => index);
   const cursorStepDuration = 130;
+  const neutralStepDuration = 115;
+  const neutralEffectIds = effects.map(effect => effect.id);
   const cursorTop = Math.min(...cursorParticles.map(particle => particle.y - particle.size / 2));
   const cursorBottom = Math.max(...cursorParticles.map(particle => particle.y + particle.size / 2));
   const cursorLeft = Math.min(...cursorParticles.map(particle => particle.x));
@@ -45,9 +47,11 @@
   const ctx = canvas.getContext('2d');
   const dimensions = $('dimensions');
   const status = $('status');
-  const playbackControls = [$('play'), $('download')];
+  const playbackControls = [$('play'), $('download'), $('download-alpha')];
   const background = $('background');
-  const settings = [comment, $('format'), $('speed'), background];
+  const fontSize = $('font-size');
+  const lineBreaks = $('line-breaks');
+  const settings = [comment, $('format'), $('speed'), background, fontSize, lineBreaks];
   const split = $('split');
   const markWords = $('markWords');
   const markedWordsList = $('markedWords');
@@ -160,6 +164,7 @@
   }
 
   function wrap(glyphs, width) {
+    const automaticWrap = Number.isFinite(width);
     const lines = [];
     let line = { start: 0, text: '', length: 0 };
     function next(start) {
@@ -178,11 +183,11 @@
         while (end < glyphs.length && !/\s/u.test(glyphs[end].segment)) end++;
       }
       const word = glyphs.slice(index, end).map(glyph => glyph.segment).join('');
-      if (line.text && ctx.measureText(line.text + word).width > width) next(index);
+      if (automaticWrap && line.text && ctx.measureText(line.text + word).width > width) next(index);
 
       while (index < end) {
         const piece = glyphs[index].segment;
-        if (line.text && ctx.measureText(line.text + piece).width > width) next(index);
+        if (automaticWrap && line.text && ctx.measureText(line.text + piece).width > width) next(index);
         line.text += piece;
         line.length++;
         index++;
@@ -202,27 +207,41 @@
     const text = comment.value;
     const glyphs = Array.from(segmenter.segment(text));
     const margin = Math.round(width * .1);
-    let low = 0;
-    let high = Math.round(Math.min(width, height) * .105) + 1;
-    let fitted;
+    const manualBreaks = lineBreaks.value === 'manual';
 
-    while (high - low > 1) {
-      const size = Math.floor((high + low) / 2);
+    function measureLayout(size) {
       ctx.font = `500 ${size}px Eiffel`;
       const cap = ctx.measureText('H');
       const cursorAscent = cap.actualBoundingBoxAscent || size * .7;
       const cursorHeight = cursorAscent + (cap.actualBoundingBoxDescent || 0);
       const cursorScale = cursorHeight / (cursorBottom - cursorTop);
       const cursorWidth = (cursorRight - cursorLeft) * cursorScale;
-      const lines = wrap(glyphs, width - 2 * margin - size * .12 - cursorWidth);
-      if (lines.length * size * 1.16 > height * .78) {
-        high = size;
-      } else {
-        low = size;
-        fitted = { lines, size, cursorAscent, cursorScale };
+      const usableWidth = width - 2 * margin - size * .12 - cursorWidth;
+      const lines = wrap(glyphs, manualBreaks ? Infinity : Math.max(0, usableWidth));
+      const overflow = lines.length * size * 1.16 > height * .78 ||
+        lines.some(line => ctx.measureText(line.text.trimEnd()).width > usableWidth);
+      return { lines, size, cursorAscent, cursorScale, overflow };
+    }
+
+    let fitted;
+    if (Number.isFinite(fontSize.valueAsNumber)) {
+      fitted = measureLayout(Math.max(1, Math.round(fontSize.valueAsNumber)));
+    } else {
+      let low = 0;
+      let high = Math.round(Math.min(width, height) * .105) + 1;
+      while (high - low > 1) {
+        const size = Math.floor((high + low) / 2);
+        const candidate = measureLayout(size);
+        if (candidate.overflow) {
+          high = size;
+        } else {
+          low = size;
+          fitted = candidate;
+        }
       }
     }
 
+    if (fitted) dimensions.textContent += ` · ${fitted.size} px`;
     const lastVisibleCount = glyphs.findLastIndex(glyph => /\S/u.test(glyph.segment)) + 1;
     layout = fitted && { ...fitted, glyphs, margin, width, height, lastVisibleCount };
     canvas.setAttribute('aria-label', text.trim() ? `Anteprima del commento: ${text}` : 'Anteprima vuota');
@@ -278,12 +297,32 @@
     };
   }
 
-  function drawCursor(id, x, y, scale, visible) {
-    for (const index of visible) {
+  function createNeutralMix(random = Math.random) {
+    const ids = [];
+    function pickUnusedEffect() {
+      const choices = neutralEffectIds.filter(id => !ids.includes(id));
+      return choices[Math.floor(random() * choices.length)];
+    }
+
+    for (const index of cursorIndices) ids[index] = pickUnusedEffect();
+    let slot = Math.floor(random() * ids.length);
+
+    return {
+      ids,
+      advance() {
+        ids[slot] = pickUnusedEffect();
+        slot = (slot + 1) % ids.length;
+      }
+    };
+  }
+
+  function drawCursor(id, x, y, scale, visible, neutralIds) {
+    for (const index of id ? visible : cursorIndices) {
+      const particleId = id || neutralIds[index];
       const particle = cursorParticles[index];
       const size = particle.size * scale;
-      const particleSize = id === 'calore' ? size * heatParticleScales[index] : size;
-      drawParticle(id, x + (particle.x - cursorLeft) * scale + (size - particleSize) / 2,
+      const particleSize = particleId === 'calore' ? size * heatParticleScales[index] : size;
+      drawParticle(particleId, x + (particle.x - cursorLeft) * scale + (size - particleSize) / 2,
         y + (particle.y - cursorTop) * scale, particleSize);
     }
   }
@@ -325,10 +364,14 @@
     return elapsed >= wordGlitchDuration || wordGlitchPattern[step % wordGlitchPattern.length];
   }
 
-  function render(count, visible = cursorIndices, glitchElapsed, words = []) {
+  function render(count, visible = cursorIndices, glitchElapsed, words = [], transparent = false, neutralIds = neutralEffectIds) {
     const colors = STUDIO_BACKGROUNDS[background.value];
-    ctx.fillStyle = colors.hex;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if (transparent) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    } else {
+      ctx.fillStyle = colors.hex;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
     if (!layout || !runs.length) return;
 
     const { glyphs, lines, size, margin, height, cursorAscent, cursorScale, lastVisibleCount } = layout;
@@ -362,7 +405,7 @@
       }
     }
 
-    drawCursor(effectAt(count), cursorX + size * .12, cursorY, cursorScale, visible);
+    drawCursor(effectAt(count), cursorX + size * .12, cursorY, cursorScale, visible, neutralIds);
   }
 
   function setControls() {
@@ -373,25 +416,24 @@
     for (const control of [...settings, ...$('effects').querySelectorAll('select')]) control.disabled = recording;
   }
 
-  function animate(onComplete) {
-    cancelAnimationFrame(animation);
+  function createAnimation(transparent = false) {
     const speed = Number($('speed').value);
     const length = layout.glyphs.length;
     let count = 0;
-    const start = performance.now();
-    let nextCharacter = start + 350 + speed;
+    let nextCharacter = 350 + speed;
     let typingEnd;
     const words = [...markedWords.values()].sort((a, b) => a.index - b.index);
     const hold = words.length ? wordGlitchDuration : 1500;
     const advanceCursor = createCursorSequence();
+    const neutralMix = createNeutralMix();
+    let nextNeutralStep = neutralStepDuration;
     let visible = [];
-    let nextCursorStep = start;
-    render(0, visible);
+    let nextCursorStep = 0;
 
-    function frame(now) {
+    return now => {
       if (count < length && now >= nextCharacter) {
         count++;
-        nextCharacter = Math.max(nextCharacter + speed, now + 34);
+        nextCharacter = Math.max(nextCharacter + speed, now + 30);
         if (count === length) typingEnd = now;
       }
 
@@ -400,15 +442,28 @@
         nextCursorStep = now + cursorStepDuration * (visible.length === cursorParticles.length ? 2 : 1);
       }
 
-      const exportFinished = onComplete && typingEnd !== undefined &&
-        now >= typingEnd + hold && visible.length === cursorParticles.length;
-      const elapsed = typingEnd === undefined ? undefined : now - typingEnd;
-      render(count, visible, elapsed, words);
-      if (exportFinished) {
-        onComplete();
-      } else {
-        animation = requestAnimationFrame(frame);
+      const neutral = !effectAt(count);
+      if (neutral && now >= nextNeutralStep) {
+        neutralMix.advance();
+        nextNeutralStep = now + neutralStepDuration;
       }
+
+      const elapsed = typingEnd === undefined ? undefined : now - typingEnd;
+      render(count, visible, elapsed, words, transparent, neutralMix.ids);
+      return elapsed !== undefined && elapsed >= hold && (neutral || visible.length === cursorParticles.length);
+    };
+  }
+
+  function animate(onComplete) {
+    cancelAnimationFrame(animation);
+    const step = createAnimation();
+    const start = performance.now();
+    render(0, []);
+
+    function frame(now) {
+      const finished = step(now - start);
+      if (onComplete && finished) onComplete();
+      else animation = requestAnimationFrame(frame);
     }
 
     animation = requestAnimationFrame(frame);
@@ -422,7 +477,12 @@
     cancelAnimationFrame(animation);
     buildLayout();
     setControls();
-    status.textContent = runs.length && !layout ? 'Il commento è troppo lungo per il formato selezionato.' : '';
+    status.textContent = '';
+    if (runs.length && !layout) {
+      status.textContent = 'Il commento è troppo lungo per il formato selezionato.';
+    } else if (runs.length && layout.overflow) {
+      status.textContent = 'Il testo supera l’area utile. Riduci la dimensione o modifica gli a capo.';
+    }
     if (layout && runs.length) play();
     else render(0);
   }
@@ -486,6 +546,38 @@
     }
   }
 
+  async function exportAlphaVideo() {
+    cancelAnimationFrame(animation);
+    recording = true;
+    setControls();
+    try {
+      const fps = 30;
+      const step = createAnimation(true);
+      const frames = [];
+      let finished;
+      do {
+        finished = step(frames.length * 1000 / fps);
+        frames.push(await encodeCanvasPng(canvas));
+        if (frames.length % fps === 1) status.textContent = 'Esportazione MOV · ' + frames.length + ' fotogrammi…';
+      } while (!finished);
+
+      const movie = createAlphaMovie(frames, canvas.width, canvas.height, fps);
+      const url = URL.createObjectURL(movie);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'clouded-issue-commento-' + $('format').value + '-alpha.mov';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 1500);
+      status.textContent = 'MOV senza sfondo esportato · 30 fps.';
+    } catch {
+      status.textContent = 'Impossibile creare il MOV.';
+    } finally {
+      recording = false;
+      setControls();
+      play();
+    }
+  }
+
   async function initialize() {
     try {
       const [fonts, level02] = await Promise.all([
@@ -520,10 +612,18 @@
     });
     markWords.addEventListener('click', toggleSelectedWords);
     $('format').addEventListener('change', refresh);
+    fontSize.addEventListener('change', () => {
+      if (Number.isFinite(fontSize.valueAsNumber)) {
+        fontSize.value = Math.max(1, Math.round(fontSize.valueAsNumber));
+      }
+      refresh();
+    });
+    lineBreaks.addEventListener('change', refresh);
     background.addEventListener('change', refresh);
     $('speed').addEventListener('change', play);
     $('play').addEventListener('click', play);
     $('download').addEventListener('click', exportVideo);
+    $('download-alpha').addEventListener('click', exportAlphaVideo);
     split.addEventListener('click', splitPassage);
     loadComment();
   }

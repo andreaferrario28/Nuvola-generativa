@@ -40,7 +40,7 @@
 }
 
 .text-controls h1 { margin: 0 0 1.5rem; font-size: 1.55rem; }
-.text-controls textarea, .text-controls select, .text-actions button, #split, .word-settings button {
+.text-controls textarea, .text-controls select, .text-controls input[type="number"], .text-actions button, #split, .word-settings button {
   display: block;
   width: 100%;
   margin-top: .45rem;
@@ -63,7 +63,7 @@
 .text-output { min-width: 0; }
 .text-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .text-actions button { width: auto; margin: 0; cursor: pointer; border-color: var(--ink); }
-.text-actions button:last-child { color: white; background: var(--ink); }
+.text-actions #download, .text-actions #download-alpha { color: white; background: var(--ink); }
 .text-actions button:disabled { opacity: .45; cursor: default; }
 
 .text-screen {
@@ -100,3 +100,7 @@
 .word-settings button:disabled { opacity: .45; cursor: default; }
 #markedWords { display: flex; flex-wrap: wrap; gap: 0 .4rem; }
 #wordFeedback:empty { display: none; }
+
+.text-controls .type-settings { margin-bottom: 1.25rem; }
+.type-settings .text-fields { margin: 0; }
+.type-settings .text-fields label { min-width: 110px; }
