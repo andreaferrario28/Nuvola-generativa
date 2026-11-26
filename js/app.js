@@ -238,7 +238,6 @@
       const HALFTONE_RADIUS_RATIO = 0.52;
       const TITLE_FONT = 'Eiffel, Inter, sans-serif';
       const SUBTITLE_FONT = 'IBM Plex Mono, monospace';
-      const DEFAULT_DISTRIBUTION = 50;
       const HOUSE_LAYER_ID = 'pressione-rete';
       const SAFE_FRAME = { left: 0.22, right: 0.78, top: 0.25, bottom: 0.75 };
 
@@ -262,10 +261,10 @@
           position: 'bottom-left'
         },
         effects: EFFECTS_CONFIG.map(e => ({
-          ...e, logic: e.defaultLogic, distribution: DEFAULT_DISTRIBUTION
+          ...e, logic: e.defaultLogic
         })),
         layers: new Map(),
-        brush: { enabled: false, effectId: 'calore', strokes: [] },
+        move: { enabled: false, positions: new Map() },
         // Motion engine
         anim: {
           mode: 'static',     // 'static' | 'in' | 'out' | 'loop'
@@ -337,8 +336,6 @@
       }
 
       function passesZoneFilter(nx, ny, rng, allowSoft = true) {
-        const margin = state.zoneMode === 'free' ? 0 : 0.02;
-        if (nx < margin || nx > 1 - margin || ny < margin || ny > 1 - margin) return false;
         if (state.zoneMode === 'frame') {
           if (isInsideSafeFrame(nx, ny)) return false;
         } else if (state.zoneMode === 'diagonal') {
@@ -544,10 +541,13 @@
           const numZones = Math.max(1, Math.round(1 + intensity * 2.5));
           const anchors = Array.from({ length: numZones }, () => focalPoint(0.5));
 
-          const cols = Math.floor(W / stepX);
-          const rows = Math.floor(H / stepY);
-          for (let r = 1; r < rows; r++) {
-            for (let c = 1; c < cols; c++) {
+          const radius = 0.12 + intensity * 0.22;
+          const startCol = Math.floor((Math.min(...anchors.map(a => a.x)) - radius) * W / stepX);
+          const endCol = Math.ceil((Math.max(...anchors.map(a => a.x)) + radius) * W / stepX);
+          const startRow = Math.floor((Math.min(...anchors.map(a => a.y)) - radius) * H / stepY);
+          const endRow = Math.ceil((Math.max(...anchors.map(a => a.y)) + radius) * H / stepY);
+          for (let r = startRow; r <= endRow; r++) {
+            for (let c = startCol; c <= endCol; c++) {
               const x = c * stepX;
               const y = r * stepY;
               const nx = x / W, ny = y / H;
@@ -559,13 +559,12 @@
                 const d = Math.hypot(nx - a.x, ny - a.y);
                 if (d < minD) minD = d;
               }
-              const radius = 0.12 + intensity * 0.22;
               if (minD > radius) continue;
               if (rng() > (1 - minD / radius) * 0.9 + 0.15) continue;
 
               const w = baseUnit * (1.5 + Math.floor(rng() * 2) * 0.9);
               const h = baseUnit * 0.65;
-              const order = clamp((c / cols) * 0.6 + (r / rows) * 0.4, 0, 1);
+              const order = clamp(nx * 0.6 + ny * 0.4, 0, 1);
 
               items.push({
                 shape: effect.shape,
@@ -604,63 +603,60 @@
         }
 
         else if (logic === 'water-traces') {
+          // I due tracciati attraversano il foglio e proseguono oltre i bordi.
+          const courses = [
+            [[-0.28, 0.34], [-0.06, 0.376], [0.17, 0.39], [0.28, 0.51],
+              [0.33, 0.60], [0.46, 0.75], [0.58, 0.77], [0.75, 0.83],
+              [0.87, 0.79], [1.07, 0.81], [1.28, 0.87]],
+            [[0.48, -0.25], [0.54, -0.07], [0.60, 0.09], [0.68, 0.19],
+              [0.76, 0.24], [0.80, 0.38], [0.81, 0.53], [0.85, 0.61],
+              [0.96, 0.70], [1.13, 0.82], [1.29, 0.87]]
+          ];
           const frame = state.zoneMode === 'frame';
-          const anchor = focalPoint(0.18);
-          const direction = frame ? 0 : state.zoneMode === 'diagonal'
-            ? -Math.PI / 4 : (rng() - 0.5) * 1.68 - 0.27;
-          const dx = Math.cos(direction);
-          const dy = Math.sin(direction);
-          const travel = Math.min(W / Math.max(0.01, Math.abs(dx)), H / Math.max(0.01, Math.abs(dy)));
-          const span = travel * (0.52 + intensity * 0.39);
-          const width = Math.min(minDim * 0.071, Math.max(20, baseUnit * 4.15));
-          const separation = Math.max(width * 1.90, minDim * 0.195);
-          const phase = rng() * Math.PI * 2;
-          const segments = Math.max(40, Math.ceil(span / 9));
-          const meander = frame ? 0.48 : 1;
-          const traces = [];
-
-          for (let trace = 0; trace < 2; trace++) {
-            const length = span * (0.95 + rng() * 0.05);
-            const bend = rng() * Math.PI * 2;
+          const anchor = state.zoneMode === 'epicenter' ? state.epicenter : { x: 0.5, y: 0.5 };
+          const pitch = Math.max(2, baseUnit * 0.42);
+          const width = minDim * (0.010 + intensity * 0.015);
+          for (const [trace, course] of courses.entries()) {
             const bankSeed = subSeed + trace * 281;
+            const phase = rng() * Math.PI * 2;
+            const nodes = course.map(([x, y]) => ({
+              x: (x - 0.5) * W,
+              y: (y - 0.5) * H * (frame ? 0.15 : 1)
+            }));
             const upper = [];
             const lower = [];
-            for (let i = 0; i <= segments; i++) {
-              const t = i / segments;
-              const along = (t - 0.5) * length;
-              const common = Math.sin(t * 7.1 + phase) * minDim * 0.071
-                + Math.sin(t * 13.8 + phase * 1.3) * minDim * 0.023;
-              const local = Math.sin(t * 10.5 + bend) * minDim * 0.032
-                + (noise2D(t * 6.5, 2, bankSeed) - 0.5) * width * 0.26
-                + (noise2D(t * 21, 4, bankSeed) - 0.5) * width * 0.34;
-              const across = (frame ? 0 : (trace - 0.5) * separation) + (common + local) * meander;
-              const taper = 0.47 + 0.53 * Math.sin(t * Math.PI) ** 0.48;
-              // Sponde frastagliate: rumore ad alta frequenza, diverso per ciascun lato.
-              const rough = seed => (noise2D(t * 27, seed, bankSeed) - 0.5) * 0.34
-                + (noise2D(t * 67, seed + 1, bankSeed) - 0.5) * 0.22;
-              const left = across - width * taper * Math.max(0.12, 0.30 + noise2D(t * 5.1, 3, bankSeed) * 0.23 + rough(11));
-              const right = across + width * taper * Math.max(0.12, 0.30 + noise2D(t * 5.1, 7, bankSeed) * 0.23 + rough(13));
-              upper.push({ x: along * dx - left * dy, y: along * dy + left * dx });
-              lower.push({ x: along * dx - right * dy, y: along * dy + right * dx });
+            for (let i = 0; i < nodes.length - 1; i++) {
+              const a = nodes[i], b = nodes[i + 1];
+              const before = nodes[i - 1] ?? a;
+              const after = nodes[i + 2] ?? b;
+              const c1 = { x: a.x + (b.x - before.x) / 6, y: a.y + (b.y - before.y) / 6 };
+              const c2 = { x: b.x - (after.x - a.x) / 6, y: b.y - (after.y - a.y) / 6 };
+              const steps = Math.max(3, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / (pitch * 0.7)));
+              for (let j = 0; j < steps + (i === nodes.length - 2 ? 1 : 0); j++) {
+                const t = j / steps;
+                const point = cubicBezier(a, c1, c2, b, t);
+                const tangent = cubicBezierTangent(a, c1, c2, b, t);
+                const length = Math.hypot(tangent.x, tangent.y);
+                const normalX = -tangent.y / length;
+                const normalY = tangent.x / length;
+                const progress = (i + t) / (nodes.length - 1);
+                const meander = Math.sin(progress * 85 + phase) * width * 0.74
+                  + Math.sin(progress * 160 + phase) * width * 0.33;
+                const taper = Math.min(1, progress * 9, (1 - progress) * 9);
+                const left = meander - width * taper * (0.39 + noise2D(progress * 31, 3, bankSeed) * 0.25);
+                const right = meander + width * taper * (0.39 + noise2D(progress * 31, 7, bankSeed) * 0.25);
+                upper.push({ x: point.x + normalX * left, y: point.y + normalY * left });
+                lower.push({ x: point.x + normalX * right, y: point.y + normalY * right });
+              }
             }
-            traces.push({ points: upper.concat(lower.reverse()), bankSeed });
-          }
-
-          const margin = free ? 0 : 0.027;
-          const envelope = getPointBounds(traces.flatMap(trace => trace.points));
-          const fit = Math.min(1, W * (1 - margin * 2) / (envelope.right - envelope.left),
-            H * (1 - margin * 2) / (envelope.bottom - envelope.top));
-          for (const [i, trace] of traces.entries()) {
-            const points = trace.points.map(({ x, y }) => ({ x: x * fit, y: y * fit }));
+            const points = upper.concat(lower.reverse());
             const bounds = getPointBounds(points);
-            const x = clamp((frame ? 0.5 : anchor.x) * W,
-              W * margin - (frame ? bounds.left : envelope.left * fit),
-              W * (1 - margin) - (frame ? bounds.right : envelope.right * fit));
-            const y = clamp((frame ? (i === 0 ? 0.133 : 0.867) : anchor.y) * H,
-              H * margin - (frame ? bounds.top : envelope.top * fit),
-              H * (1 - margin) - (frame ? bounds.bottom : envelope.bottom * fit));
-            const ribbon = createAquiferRibbon(points, bounds, width * fit / 4.8, effect.contamination, trace.bankSeed);
-            items.push({ shape: effect.shape, x, y, color, size: width * fit, order: i * 0.26, ribbon });
+            const ribbon = createAquiferRibbon(points, bounds, pitch, effect.contamination, bankSeed);
+            items.push({
+              shape: effect.shape, x: anchor.x * W,
+              y: (frame ? (trace === 0 ? 0.11 : 0.89) : anchor.y) * H, color, size: width,
+              order: trace * 0.26, ribbon
+            });
           }
         }
 
@@ -718,8 +714,6 @@
               const tang = cubicBezierTangent(p0, p1, p2, p3, along);
               const nx = pt.x / W, ny = pt.y / H;
               if (state.zoneMode === 'frame' && isInsideSafeFrame(nx, ny)) continue;
-              const margin = free ? 0 : 0.02;
-              if (nx < margin || nx > 1 - margin || ny < margin || ny > 1 - margin) continue;
 
               const angle = Math.atan2(tang.y, tang.x) + Math.PI / 2;
               items.push({
@@ -754,10 +748,10 @@
           const cos = Math.cos(axis);
           const sin = Math.sin(axis);
 
-          const startX = Math.max(free ? 0 : step, Math.floor((cx - radX * 1.3) / step) * step);
-          const endX   = Math.min(free ? W : W - step, cx + radX * 1.3);
-          const startY = Math.max(free ? 0 : step, Math.floor((cy - radY * 1.3) / step) * step);
-          const endY   = Math.min(free ? H : H - step, cy + radY * 1.3);
+          const startX = Math.floor((cx - radX * 1.3) / step) * step;
+          const endX   = cx + radX * 1.3;
+          const startY = Math.floor((cy - radY * 1.3) / step) * step;
+          const endY   = cy + radY * 1.3;
 
           for (let y = startY; y <= endY; y += step) {
             for (let x = startX; x <= endX; x += step) {
@@ -891,10 +885,10 @@
           const cx = anchor.x * W;
           const cy = anchor.y * H;
 
-          const startX = Math.max(free ? 0 : step, Math.floor((cx - rad * 1.35) / step) * step);
-          const endX   = Math.min(free ? W : W - step, cx + rad * 1.35);
-          const startY = Math.max(free ? 0 : step, Math.floor((cy - rad * 1.35) / step) * step);
-          const endY   = Math.min(free ? H : H - step, cy + rad * 1.35);
+          const startX = Math.floor((cx - rad * 1.35) / step) * step;
+          const endX   = cx + rad * 1.35;
+          const startY = Math.floor((cy - rad * 1.35) / step) * step;
+          const endY   = cy + rad * 1.35;
 
           for (let y = startY; y <= endY; y += step) {
             for (let x = startX; x <= endX; x += step) {
@@ -1005,80 +999,77 @@
         }
 
         else if (logic === 'branching-pylons') {
+          const paths = [
+            [[0.189, 0.675, false], [0.191, 0.637], [0.194, 0.593], [0.196, 0.564],
+              [0.200, 0.524], [0.205, 0.487], [0.209, 0.448], [0.209, 0.410],
+              [0.203, 0.377], [0.200, 0.341], [0.228, 0.319], [0.255, 0.299],
+              [0.279, 0.279], [0.298, 0.264]],
+            [[0.298, 0.264], [0.306, 0.268], [0.320, 0.278], [0.349, 0.301],
+              [0.383, 0.331], [0.414, 0.362], [0.441, 0.394], [0.469, 0.425],
+              [0.587, 0.539, false], [0.634, 0.608, false], [0.788, 0.696, false],
+              [0.811, 0.727, false], [0.862, 0.846, false], [0.907, 0.900, false]]
+          ];
           const frame = state.zoneMode === 'frame';
-          const layoutAngle = frame ? 0 : state.zoneMode === 'diagonal' ? -Math.PI / 5 : (rng() - 0.5) * Math.PI * 0.68;
-          const cos = Math.cos(layoutAngle);
-          const sin = Math.sin(layoutAngle);
-          const anchor = focalPoint(0.12);
-          const centerX = frame ? 0.5 : clamp(anchor.x, free ? 0.35 : 0.44, free ? 0.65 : 0.56);
-          const centerY = frame ? 0.5 : clamp(anchor.y, free ? 0.35 : 0.44, free ? 0.65 : 0.56);
-          const fit = frame ? 1 : free ? 0.72 : 0.86;
-          const edgeInset = free ? 0.012 : 0.045;
-          const nodeSize = Math.min(baseUnit * 1.15, minDim * 0.022);
-          const strokeWidth = Math.max(1.5, baseUnit * 0.18);
-          const trunks = [[], []];
+          const anchor = frame ? { x: 0.57, y: 0.135 }
+            : state.zoneMode === 'epicenter' ? state.epicenter : { x: 0.5, y: 0.5 };
+          const scale = minDim * (frame ? 0.23 : 1 / 0.95);
+          const nodeSize = Math.min(baseUnit * (frame ? 0.43 : 0.86), minDim * 0.017);
+          const strokeWidth = Math.max(0.9, baseUnit * 0.14);
           const edges = [];
+          const junction = { x: (0.298 - 0.55) * scale + anchor.x * W,
+            y: (0.264 - 0.58) * scale + anchor.y * H, order: 0.1 };
 
           function addEdge(a, b) {
-            a.degree++;
-            b.degree++;
             edges.push({ a, b });
             lines.push({
-              x1: a.x, y1: a.y, x2: b.x, y2: b.y, color, strokeWidth, opacity: 1, order: b.order
+              x1: a.x, y1: a.y, x2: b.x, y2: b.y,
+              color, strokeWidth, opacity: 1, order: Math.max(a.order, b.order)
             });
           }
 
-          trunks.forEach((nodes, tree) => {
-            const band = (tree === 0 ? -1 : 1) * (frame ? 0.35 : 0.18);
-            const drift = (rng() - 0.5) * 0.14;
-            const count = 6 + Math.floor(rng() * 3);
-            for (let i = 0; i < count; i++) {
-              const t = i / (count - 1);
-              const along = (t - 0.5) * (0.65 + rng() * 0.10);
-              const across = band + (rng() - 0.5) * (frame ? 0.080 : 0.145) + (t - 0.5) * drift;
-              const node = {
-                x: W * (centerX + fit * (along * cos - across * sin)),
-                y: H * (centerY + fit * (along * sin + across * cos)),
-                degree: 0, order: 0.08 + t * 0.46, trunk: true
-              };
-              if (i) addEdge(nodes[i - 1], node);
-              nodes.push(node);
-            }
-          });
+          function addNode(point) {
+            items.push({
+              shape: effect.shape, x: point.x, y: point.y, size: nodeSize,
+              w: nodeSize, h: nodeSize, rot: 0, color, order: point.order
+            });
+          }
 
-          // I rami possono partire dalla dorsale o da un nodo già cresciuto.
-          // Ogni nuovo segmento deve avere spazio libero in entrambe le reti.
-          const target = 7 + Math.floor(intensity * 57);
-          let added = 0;
-          for (let attempt = 0; attempt < target * 36 && added < target; attempt++) {
-            const tree = attempt % 2;
-            const network = trunks[tree];
-            const root = network[Math.floor(rng() * network.length)];
-            if (root.degree >= 3) continue;
+          const roots = [];
+          for (const [index, path] of paths.entries()) {
+            const nodes = path.map(([u, v, marked = true], i) => {
+              if (index === 0 ? i === path.length - 1 : i === 0) return junction;
+              const point = {
+                x: (u - 0.55) * scale + anchor.x * W,
+                y: (v - 0.58) * scale + anchor.y * H,
+                order: 0.12 + (index === 0 ? path.length - 1 - i : i) / path.length * 0.38
+              };
+              if (marked) {
+                addNode(point);
+                roots.push(point);
+              }
+              return point;
+            });
+            for (let i = 1; i < nodes.length; i++) addEdge(nodes[i - 1], nodes[i]);
+          }
+          addNode(junction);
+
+          const target = 1 + Math.floor(intensity * 7);
+          const usedRoots = new Set();
+          for (let attempt = 0; attempt < target * 24 && usedRoots.size < target; attempt++) {
+            const root = roots[Math.floor(rng() * roots.length)];
+            if (usedRoots.has(root)) continue;
             const angle = rng() * Math.PI * 2;
-            const length = minDim * (0.042 + rng() * 0.14);
+            const length = scale * (0.035 + rng() * 0.12);
             const tip = {
               x: root.x + Math.cos(angle) * length,
               y: root.y + Math.sin(angle) * length,
-              degree: 0, order: 0.43 + rng() * 0.52
+              order: 0.57 + rng() * 0.37
             };
-            if (tip.x < W * edgeInset || tip.x > W * (1 - edgeInset) || tip.y < H * edgeInset || tip.y > H * (1 - edgeInset)) continue;
-            if (frame && (tree === 0 ? tip.y > H * 0.232 : tip.y < H * 0.768)) continue;
-            if (trunks.some(nodes => nodes.some(node => Math.hypot(tip.x - node.x, tip.y - node.y) < nodeSize * 1.7))) continue;
-            if (edges.some(({a, b}) => segmentsCross(root, tip, a, b))) continue;
+            if (edges.some(({ a, b }) => segmentsCross(root, tip, a, b))) continue;
+            if (items.some(node => Math.hypot(tip.x - node.x, tip.y - node.y) < nodeSize * 2)) continue;
             addEdge(root, tip);
-            network.push(tip);
-            added++;
-          }
-
-          for (const network of trunks) {
-            for (const point of network) {
-              if (!point.trunk && point.degree === 2) continue;
-              items.push({
-                shape: effect.shape, x: point.x, y: point.y, size: nodeSize,
-                w: nodeSize, h: nodeSize, rot: 0, color, order: point.order
-              });
-            }
+            addNode(tip);
+            usedRoots.add(root);
           }
         }
 
@@ -1095,10 +1086,17 @@
             const angle = (rng() - 0.5) * 1.25;
             const cos = Math.cos(angle);
             const sin = Math.sin(angle);
-            const cells = Math.ceil(villageRadius / step);
+            const cells = Math.ceil(villageRadius / step * 1.55);
+            const bend = (rng() - 0.5) * 1.1;
+            const phase = rng() * Math.PI * 2;
             for (let row = -cells; row <= cells; row++) {
               for (let col = -cells; col <= cells; col++) {
-                const distance = Math.hypot(row * 1.16, col) * step / villageRadius;
+                const u = col * step / villageRadius;
+                const v = row * step / villageRadius;
+                const theta = Math.atan2(v, u);
+                const edge = 0.94 + Math.sin(theta * 3 + phase) * 0.24
+                  + Math.cos(theta * 5 - phase) * 0.14;
+                const distance = Math.hypot(u * 0.82, (v - bend * u * u) * 1.52) / edge;
                 if (distance > 1 || rng() > 0.98 - distance * 0.39) continue;
                 // Le fasce vuote fungono da strade tra gli isolati.
                 const lx = (col + Math.sign(col) * 0.25 + (rng() - 0.5) * 0.23) * step;
@@ -1225,14 +1223,20 @@
             ...center, rx: range / W * (0.75 + rng() * 0.68), ry: range / H * (0.72 + rng() * 0.77),
             weight: 0.62 + rng() * 0.38
           }));
-          const jitter = cell * (poster ? 0.045 : 0.11);
+          const left = Math.min(...sources.map(source => (source.x - source.rx * 4) * W));
+          const right = Math.max(...sources.map(source => (source.x + source.rx * 4) * W));
+          const top = Math.min(...sources.map(source => (source.y - source.ry * 4) * H));
+          const bottom = Math.max(...sources.map(source => (source.y + source.ry * 4) * H));
+          const startCol = Math.floor((left - firstX) / cell);
+          const startRow = Math.floor((top - firstY) / cell);
+          const occupied = new Map();
 
           // La probabilità cala gradualmente attorno a ogni sorgente; una trama
           // irregolare lascia vuoti anche nelle zone con più quadratini.
-          for (let row = 0, y = firstY; y < H; row++, y += cell) {
-            for (let col = 0, x = firstX; x < W; col++, x += cell) {
-              const px = x + (hash2D(col, row, subSeed + 11) * 2 - 1) * jitter;
-              const py = y + (hash2D(col, row, subSeed + 23) * 2 - 1) * jitter;
+          for (let row = startRow; firstY + row * cell < bottom; row++) {
+            for (let col = startCol; firstX + col * cell < right; col++) {
+              const px = firstX + col * cell;
+              const py = firstY + row * cell;
               const nx = px / W;
               const ny = py / H;
               if (!passesZoneFilter(nx, ny, rng, false)) continue;
@@ -1245,10 +1249,16 @@
               const variation = 0.15 + 0.93 * grain ** 1.25;
               const probability = Math.min(0.48, density ** 1.18 * variation * (0.41 + intensity * 0.82));
               if (hash2D(col, row, subSeed + 37) >= probability) continue;
-              items.push({
+              const item = {
                 shape: 'square', x: px, y: py, size: side, w: side, h: side, color,
                 order: clamp(ny * 0.72 + nx * 0.22, 0, 1)
-              });
+              };
+              items.push(item);
+              occupied.set(`${col},${row}`, item);
+              const neighbor = occupied.get(`${col - 1},${row}`) ?? occupied.get(`${col},${row - 1}`);
+              if (neighbor && hash2D(col, row, subSeed + 59) < 0.48) {
+                for (const square of [item, neighbor]) square.size = square.w = square.h = cell;
+              }
             }
           }
         }
@@ -1281,8 +1291,9 @@
           const ox = origin.x * W;
           const oy = origin.y * H;
 
-          for (let y = cell; y < H - cell; y += cell) {
-            for (let x = cell; x < W - cell; x += cell) {
+          const reach = maxLen + (baseUnit * 2.2 + maxSpread) * 1.35 + cell * 3;
+          for (let y = Math.floor((oy - reach) / cell) * cell; y <= oy + reach; y += cell) {
+            for (let x = Math.floor((ox - reach) / cell) * cell; x <= ox + reach; x += cell) {
               const nx = x / W, ny = y / H;
               if (state.zoneMode === 'frame' && isInsideSafeFrame(nx, ny)) continue;
 
@@ -1339,10 +1350,10 @@
           const cy = origin.y * H;
 
           const span = maxR * (feathered ? 1.25 : 1.2);
-          const startX = Math.max(free ? 0 : step, Math.floor((cx - span) / step) * step);
-          const endX = Math.min(free ? W : W - step, cx + span);
-          const startY = Math.max(free ? 0 : step, Math.floor((cy - span) / step) * step);
-          const endY = Math.min(free ? H : H - step, cy + span);
+          const startX = Math.floor((cx - span) / step) * step;
+          const endX = cx + span;
+          const startY = Math.floor((cy - span) / step) * step;
+          const endY = cy + span;
           const smooth = value => {
             const t = clamp(value, 0, 1);
             return t * t * (3 - 2 * t);
@@ -1369,7 +1380,7 @@
               const heat = clamp(1 - effD / edge, 0, 1);
               let size = step * (0.21 + smooth(heat) * 0.70);
               if (feathered) {
-                let clearance = Math.min(x - W * 0.02, W * 0.98 - x, y - H * 0.02, H * 0.98 - y);
+                let clearance = Infinity;
                 if (state.zoneMode === 'frame') {
                   const dx = Math.max(SAFE_FRAME.left * W - x, x - SAFE_FRAME.right * W, 0);
                   const dy = Math.max(SAFE_FRAME.top * H - y, y - SAFE_FRAME.bottom * H, 0);
@@ -1451,12 +1462,13 @@
               const start = left < cutoff ? u + (mid - u) * (cutoff - left) / (level - left) : u;
               const end = right < cutoff ? next - (next - mid) * (cutoff - right) / (level - right) : next;
               if (end - start < 0.6) continue;
-              const x1 = cx + start * dx - v * dy;
-              const y1 = cy + start * dy + v * dx;
-              const x2 = cx + end * dx - v * dy;
-              const y2 = cy + end * dy + v * dx;
+              const seam = Math.min((end - start) * 0.12, gap * 0.025);
+              const x1 = cx + (start + seam) * dx - v * dy;
+              const y1 = cy + (start + seam) * dy + v * dx;
+              const x2 = cx + (end - seam) * dx - v * dy;
+              const y2 = cy + (end - seam) * dy + v * dx;
               if (!valid(x1, y1) || !valid(x2, y2)) continue;
-              const width = gap * (0.036 + Math.round(level * 6) / 6 * 0.92);
+              const width = gap * (0.055 + level * 0.63);
               lines.push({
                 x1, y1, x2, y2, color, strokeWidth: width, opacity: 1, order: 1 - level
               });
@@ -1475,10 +1487,10 @@
           const stepY = Math.max(6, baseUnit * 0.75);
           const stepX = Math.max(18, baseUnit * 2.4);
 
-          const startY = Math.max(stepY, Math.floor((cy - maxR) / stepY) * stepY);
-          const endY   = Math.min(H - stepY, cy + maxR);
-          const startX = Math.max(stepX, Math.floor((cx - maxR * 1.15) / stepX) * stepX);
-          const endX   = Math.min(W - stepX, cx + maxR * 1.15);
+          const startY = Math.floor((cy - maxR * 1.18) / stepY) * stepY;
+          const endY = cy + maxR * 1.18;
+          const startX = Math.floor((cx - maxR * 1.18) / stepX) * stepX;
+          const endX = cx + maxR * 1.18;
 
           for (let y = startY; y <= endY; y += stepY) {
             for (let x = startX; x <= endX; x += stepX) {
@@ -1575,13 +1587,11 @@
         };
       }
 
-      function ribbonIntersectsStrip(points, x, y, width, height) {
+      function ribbonIntersectsStrip(edges, x, y, width, height) {
         const midX = x + width / 2;
         const midY = y + height / 2;
         let inside = false;
-        for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-          const a = points[j];
-          const b = points[i];
+        for (const [a, b] of edges) {
           if ((a.y > midY) !== (b.y > midY) &&
             a.x + (b.x - a.x) * (midY - a.y) / (b.y - a.y) > midX) inside = !inside;
           if (Math.max(a.x, b.x) < x || Math.min(a.x, b.x) > x + width ||
@@ -1596,56 +1606,28 @@
         return inside;
       }
 
-      function pointInPolygon(points, px, py) {
-        let inside = false;
-        for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
-          const a = points[j];
-          const b = points[i];
-          if ((a.y > py) !== (b.y > py) &&
-            a.x + (b.x - a.x) * (py - a.y) / (b.y - a.y) > px) inside = !inside;
-        }
-        return inside;
-      }
-
       function createAquiferRibbon(points, bounds, pitch, contamination, seed) {
         const f = value => Number(value.toFixed(2));
         const outline = points.map((point, i) => `${i ? 'L' : 'M'}${f(point.x)} ${f(point.y)}`).join('') + 'Z';
-        const block = pitch * 5.25;
+        const block = pitch * 5.1;
         const strips = [];
+        const edges = points.map((point, i) => [point, points[(i + 1) % points.length]]);
+        const height = pitch * 0.72;
         for (let row = Math.floor(bounds.top / pitch); row * pitch < bounds.bottom; row++) {
-          // Mattoni orizzontali sfalsati, ritagliati dalla sagoma del tracciato.
-          const shift = (((row % 4) + 4) % 4) * block * 0.24;
-          const y = row * pitch + pitch * 0.10;
-          for (let col = Math.floor((bounds.left - shift) / block); col * block + shift < bounds.right; col++) {
+          const shift = ((row % 2 + 2) % 2) * block * 0.5;
+          const y = row * pitch;
+          const rowEdges = edges.filter(([a, b]) => Math.max(a.y, b.y) >= y && Math.min(a.y, b.y) <= y + height);
+          if (!rowEdges.length) continue;
+          const left = Math.min(...rowEdges.map(([a, b]) => Math.min(a.x, b.x)));
+          const right = Math.max(...rowEdges.map(([a, b]) => Math.max(a.x, b.x)));
+          for (let col = Math.floor((left - shift) / block); col * block + shift < right; col++) {
             const x = col * block + shift;
-            const width = block * (0.63 + hash2D(col, row, seed + 5) * 0.29);
-            const height = pitch * (0.72 + hash2D(col, row, seed + 11) * 0.14);
-            if (!ribbonIntersectsStrip(points, x, y, width, height)) continue;
-            // Ogni mattone è diviso in pixel: restano solo quelli con il centro
-            // dentro il tracciato, così il bordo segue la linea a gradini.
-            const rank = hash2D(col, row, seed + 23);
-            const cells = Math.max(1, Math.round(width / pitch));
-            const cell = width / cells;
-            let run = null;
-            const flush = () => {
-              if (!run) return;
-              const rx = x + run.from * cell;
-              const rw = (run.to - run.from) * cell;
-              strips.push({
-                rank, x: rx, y, width: rw, height,
-                d: `M${f(rx)} ${f(y)}H${f(rx + rw)}V${f(y + height)}H${f(rx)}Z`
-              });
-              run = null;
-            };
-            for (let c = 0; c < cells; c++) {
-              if (pointInPolygon(points, x + (c + 0.5) * cell, y + height / 2)) {
-                if (run) run.to = c + 1;
-                else run = { from: c, to: c + 1 };
-              } else {
-                flush();
-              }
-            }
-            flush();
+            const width = block * 0.88;
+            if (!ribbonIntersectsStrip(rowEdges, x, y, width, height)) continue;
+            strips.push({
+              rank: hash2D(col, row, seed + 23), x, y, width, height,
+              d: `M${f(x)} ${f(y)}H${f(x + width)}V${f(y + height)}H${f(x)}Z`
+            });
           }
         }
         // Sequenza di comparsa: i mattoncini entrano uno alla volta lungo il percorso.
@@ -1722,11 +1704,11 @@
 
           // Le falde mantengono il motivo e la sagoma. Si escludono le
           // singole bande che entrerebbero in contatto con una lettera.
-          ribbon.bands = ribbon.bands.map(band => createAquiferBand(band.color,
+          item.ribbon = { ...ribbon, bands: ribbon.bands.map(band => createAquiferBand(band.color,
             band.strips.filter(strip => !hitsLogo(x + strip.x, y + strip.y,
               x + strip.x + strip.width, y + strip.y + strip.height))
-          )).filter(band => band.d);
-          return ribbon.bands.length > 0;
+          )).filter(band => band.d) };
+          return item.ribbon.bands.length > 0;
         });
 
         layer.lines = layer.lines.flatMap(line => {
@@ -1761,116 +1743,26 @@
         });
       }
 
-      function redistributeLayer(layer, effect, W, H) {
-        const amount = (effect.distribution - DEFAULT_DISTRIBUTION) / DEFAULT_DISTRIBUTION;
-        if (!amount || (!layer.items.length && !layer.lines.length)) return;
-
-        // Sposta l'intero livello come un blocco, conservando misure e angoli.
-        let left = W, right = 0, top = H, bottom = 0;
-        function include(x, y, padding) {
-          left = Math.min(left, x - padding);
-          right = Math.max(right, x + padding);
-          top = Math.min(top, y - padding);
-          bottom = Math.max(bottom, y + padding);
-        }
-        for (const item of layer.items) {
-          if (item.ribbon) {
-            const bounds = item.ribbon.bounds;
-            include(item.x + bounds.left, item.y + bounds.top, 0);
-            include(item.x + bounds.right, item.y + bounds.bottom, 0);
-          } else {
-            include(item.x, item.y, Math.max(item.size, item.w || 0, item.h || 0) * 0.75);
-          }
-        }
-        for (const line of layer.lines) {
-          const padding = line.strokeWidth / 2;
-          include(line.x1, line.y1, padding);
-          include(line.x2, line.y2, padding);
-        }
-        const vertical = state.zoneMode === 'diagonal' ? -amount : amount;
-        const dx = amount * Math.min(W * 0.218, Math.max(0, amount < 0 ? left : W - right));
-        const dy = vertical * Math.min(H * 0.18, Math.max(0, vertical < 0 ? top : H - bottom));
-        for (const item of layer.items) {
-          item.x += dx;
-          item.y += dy;
-        }
-        for (const line of layer.lines) {
-          line.x1 += dx;
-          line.y1 += dy;
-          line.x2 += dx;
-          line.y2 += dy;
-        }
+      function positionLayer(source, position, W, H) {
+        const dx = (position?.x ?? 0) * W;
+        const dy = (position?.y ?? 0) * H;
+        return {
+          items: source.items.map(item => ({ ...item, x: item.x + dx, y: item.y + dy })),
+          lines: source.lines.map(line => ({
+            ...line, x1: line.x1 + dx, y1: line.y1 + dy, x2: line.x2 + dx, y2: line.y2 + dy
+          }))
+        };
       }
 
       function usesHouseLayout(effect) {
         return effect.logic === 'settlements';
       }
 
-      function applyBrushStrokes(layer, effect, W, H) {
-        const key = usesHouseLayout(effect) ? HOUSE_LAYER_ID : effect.id;
-        if (!state.brush.strokes.some(stroke => stroke.effectId === key)) return;
-        const items = layer.items.slice();
-        const lines = layer.lines.slice();
-        const baseUnit = Math.min(W, H) / 90 * state.globalScale;
-
-        state.brush.strokes.forEach((stroke, strokeIndex) => {
-          if (stroke.effectId !== key) return;
-          const rng = createRNG((strokeIndex + 1) * 4129);
-          stroke.points.forEach((point, index) => {
-            const x = point.x * W;
-            const y = point.y * H;
-            const order = index / Math.max(1, stroke.points.length) * 0.85;
-            if (effect.id === 'rumore') {
-              const sample = lines[Math.floor(rng() * lines.length)];
-              const dx = sample ? (sample.x2 - sample.x1) / 2 : baseUnit;
-              const dy = sample ? (sample.y2 - sample.y1) / 2 : -baseUnit * 0.60;
-              layer.lines.push({
-                x1: x - dx, y1: y - dy, x2: x + dx, y2: y + dy, color: effect.color,
-                strokeWidth: sample?.strokeWidth || baseUnit * 0.26, opacity: 1, order
-              });
-              return;
-            }
-
-            if (effect.id === 'falda') {
-              const before = stroke.points[Math.max(0, index - 1)];
-              const after = stroke.points[Math.min(stroke.points.length - 1, index + 1)];
-              const angle = Math.atan2((after.y - before.y) * H, (after.x - before.x) * W);
-              const cos = Math.cos(angle);
-              const sin = Math.sin(angle);
-              const w = baseUnit * 1.65;
-              const h = baseUnit * 0.82;
-              const points = [[-w, -h], [w, -h], [w, h], [-w, h]].map(([u, v]) => ({
-                x: u * cos - v * sin, y: u * sin + v * cos
-              }));
-              const ribbon = createAquiferRibbon(points, getPointBounds(points), baseUnit * 0.42,
-                effect.contamination, (strokeIndex + 1) * 2539 + index);
-              layer.items.push({ shape: effect.shape, x, y, color: effect.color, size: w, order, ribbon });
-              return;
-            }
-            const template = items[Math.floor(rng() * items.length)];
-            const size = template?.size || baseUnit;
-            const item = {
-              shape: effect.shape, color: effect.color, w: size, h: size, rot: 0,
-              ...template, x, y, size, order, crossArms: undefined
-            };
-            if ((effect.shape === 'house-fill' || effect.shape === 'house-outline') && item.house === undefined) {
-              item.house = Math.floor(rng() * HOUSE_FOOTPRINTS.length);
-            }
-            if (effect.id === 'traffico') {
-              const before = stroke.points[Math.max(0, index - 1)];
-              const after = stroke.points[Math.min(stroke.points.length - 1, index + 1)];
-              const tangent = Math.atan2((after.y - before.y) * H, (after.x - before.x) * W);
-              item.rot = tangent + Math.PI / 2;
-            }
-            layer.items.push(item);
-          });
-        });
-      }
+      const generatedLayers = new Map();
 
       function rebuildGeometry() {
         const { width: W, height: H } = FORMATS[state.format];
-        state.layers.clear();
-        let total = 0;
+        generatedLayers.clear();
 
         const renderOrderIds = [
           'calore', 'consumo-suolo', 'falda', 'rumore',
@@ -1878,8 +1770,6 @@
           'flora-fauna', 'pressione-rete', 'bollette', 'traffico', 'tralicci'
         ];
 
-        const logo = state.typography.enabled ? getTypographyLayout(W, H).logo : null;
-        const hitsLogo = logo ? getLogoInkTest(logo, 3 + Math.min(W, H) * 0.0014) : null;
         const houses = state.effects.find(effect => effect.id === HOUSE_LAYER_ID);
         let houseLayout;
         renderOrderIds.forEach((id, idx) => {
@@ -1889,21 +1779,32 @@
           if (usesHouseLayout(eff)) {
             if (!houseLayout) {
               houseLayout = generateEffectLayer({ ...houses, active: true }, W, H, renderOrderIds.indexOf(HOUSE_LAYER_ID));
-              redistributeLayer(houseLayout, houses, W, H);
             }
             layer = { items: houseLayout.items.map(item => ({ ...item, shape: eff.shape, color: eff.color })), lines: [] };
           } else {
             layer = generateEffectLayer(eff, W, H, idx);
-            redistributeLayer(layer, eff, W, H);
           }
-          applyBrushStrokes(layer, eff, W, H);
-          if (hitsLogo) clearLayerAroundLogo(layer, hitsLogo, id === 'rumore');
           const glitchOrder = createRNG(hash2D(idx, 738, state.seed) * 0x100000000);
           for (const item of layer.items) item.glitchDelay = glitchOrder();
           for (const line of layer.lines) line.glitchDelay = glitchOrder();
+          generatedLayers.set(id, layer);
+        });
+        updateMoveControls();
+        renderPositionedLayers();
+      }
+
+      function renderPositionedLayers() {
+        const { width: W, height: H } = FORMATS[state.format];
+        const logo = state.typography.enabled ? getTypographyLayout(W, H).logo : null;
+        const hitsLogo = logo ? getLogoInkTest(logo, 3 + Math.min(W, H) * 0.0014) : null;
+        state.layers.clear();
+        let total = 0;
+        for (const [id, source] of generatedLayers) {
+          const layer = positionLayer(source, state.move.positions.get(id), W, H);
+          if (hitsLogo) clearLayerAroundLogo(layer, hitsLogo, id === 'rumore');
           state.layers.set(id, layer);
           total += layer.items.length + layer.lines.length;
-        });
+        }
 
         document.getElementById('particleCountBadge').textContent = `${total} geometrie`;
         renderCanvas(state.anim.progress);
@@ -1999,6 +1900,7 @@
         ctx.save();
         ctx.translate(item.x, item.y);
         if (item.rot) ctx.rotate(item.rot);
+        ctx.clip(ribbon.clip);
         if (progress >= 0.999) {
           for (const band of ribbon.bands) {
             ctx.fillStyle = band.color;
@@ -2489,7 +2391,9 @@
             const tf = ` transform="${transform}"`;
             if (item.ribbon) {
               const ribbon = item.ribbon;
-              parts.push(`    <g${tf}>`);
+              const clipId = `${effectId}-ribbon-${itemIndex}`;
+              parts.push(`    <defs><clipPath id="${clipId}"><path d="${ribbon.outline}"/></clipPath></defs>`);
+              parts.push(`    <g${tf} clip-path="url(#${clipId})">`);
               for (const band of ribbon.bands) parts.push(`      <path d="${band.d}" fill="${band.color}"/>`);
               parts.push('    </g>');
               continue;
@@ -2787,11 +2691,6 @@
                   <input type="range" min="10" max="100" value="${eff.intensity}" data-id="${eff.id}" data-parameter="intensity" title="${usesHouseLayout(eff) ? 'Condivisa da Pressione sulle case e Bollette' : intensityHint}" class="tech-slider eff-intensity flex-1 min-w-0" />
                   <span class="font-mono-tech text-[10px] text-[#161616] w-7 text-right eff-int-val">${eff.intensity}</span>
                 </label>
-                <label class="flex items-center gap-2">
-                  <span class="font-mono-tech text-[9px] uppercase text-[#666662] w-20 shrink-0">Distribuzione</span>
-                  <input type="range" min="0" max="100" value="${eff.distribution}" data-id="${eff.id}" data-parameter="distribution" aria-label="Distribuzione di ${eff.name}" title="${usesHouseLayout(eff) ? 'Condivisa da Pressione sulle case e Bollette. ' : ''}Sposta l’effetto sul foglio. 50 ripristina la distribuzione di partenza." class="tech-slider eff-distribution flex-1 min-w-0" />
-                  <span class="font-mono-tech text-[10px] text-[#161616] w-7 text-right">${eff.distribution}</span>
-                </label>
                 ${optionsControl}
                 ${mixControl}
                 ${eff.mergeDots !== undefined ? `
@@ -2915,111 +2814,97 @@
         }, 2800);
       }
 
-      function bindBrushEvents() {
+      function bindMoveEvents() {
         const frame = document.getElementById('sheetFrame');
-        const toggle = document.getElementById('brushToggle');
-        const controls = document.getElementById('brushControls');
-        const select = document.getElementById('brushEffect');
-        const undo = document.getElementById('brushUndo');
-        const brush = state.brush;
-        let pointerId = null;
-        let stroke;
+        const toggle = document.getElementById('moveToggle');
+        const controls = document.getElementById('moveControls');
+        const select = document.getElementById('moveEffect');
+        const reset = document.getElementById('moveReset');
+        let drag = null;
         let pendingFrame = 0;
-
-        for (const effect of state.effects) {
-          select.add(new Option(effect.name, effect.id));
-        }
-        select.value = brush.effectId;
-
-        function flushStroke() {
-          if (pendingFrame) cancelAnimationFrame(pendingFrame);
-          pendingFrame = 0;
-          rebuildGeometry();
-        }
 
         function schedulePreview() {
           if (pendingFrame) return;
           pendingFrame = requestAnimationFrame(() => {
             pendingFrame = 0;
-            rebuildGeometry();
+            renderPositionedLayers();
           });
         }
 
-        function pointAt(event) {
-          const rect = frame.getBoundingClientRect();
-          return {
-            x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
-            y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
-          };
-        }
-
-        function extendStroke(event, done = false) {
-          const point = pointAt(event);
-          const last = stroke.points[stroke.points.length - 1];
-          const { width, height } = FORMATS[state.format];
-          const dx = point.x - last.x;
-          const dy = point.y - last.y;
-          const distance = Math.hypot(dx * width, dy * height);
-          if (!distance) return;
-          const spacing = Math.max(5, Math.min(width, height) / 85 * state.globalScale);
-          for (let step = spacing; step <= distance; step += spacing) {
-            stroke.points.push({ x: last.x + dx * step / distance, y: last.y + dy * step / distance });
-          }
-          if (done && distance % spacing > spacing * 0.48) stroke.points.push(point);
-          if (stroke.points[stroke.points.length - 1] !== last) schedulePreview();
-        }
-
         toggle.addEventListener('click', () => {
-          brush.enabled = !brush.enabled;
-          toggle.setAttribute('aria-pressed', String(brush.enabled));
-          controls.hidden = !brush.enabled;
-          frame.style.touchAction = brush.enabled ? 'none' : '';
+          state.move.enabled = !state.move.enabled;
+          toggle.setAttribute('aria-pressed', String(state.move.enabled));
+          controls.hidden = !state.move.enabled;
+          frame.classList.toggle('moving-layer', state.move.enabled);
           updateStageHint();
         });
 
-        select.addEventListener('change', () => { brush.effectId = select.value; });
-        undo.addEventListener('click', () => {
-          brush.strokes.pop();
-          undo.disabled = brush.strokes.length === 0;
-          flushStroke();
+        reset.addEventListener('click', () => {
+          state.move.positions.delete(select.value);
+          reset.disabled = true;
+          renderPositionedLayers();
+        });
+        select.addEventListener('change', () => {
+          reset.disabled = !state.move.positions.has(select.value);
         });
 
         frame.addEventListener('pointerdown', event => {
-          if (!brush.enabled || pointerId !== null || event.button !== 0) return;
+          const id = select.value;
+          if (!state.move.enabled || drag || event.button !== 0 || !generatedLayers.has(id) || state.anim.isRecording) return;
           event.preventDefault();
-          pointerId = event.pointerId;
-          frame.setPointerCapture(pointerId);
-          const effect = state.effects.find(effect => effect.id === brush.effectId);
-          if (!effect.active) {
-            effect.active = true;
-            renderEffectsPanel();
-          }
-          stroke = { effectId: usesHouseLayout(effect) ? HOUSE_LAYER_ID : effect.id, points: [pointAt(event)] };
-          brush.strokes.push(stroke);
-          undo.disabled = false;
+          frame.setPointerCapture(event.pointerId);
+          drag = {
+            id, pointerId: event.pointerId, rect: frame.getBoundingClientRect(),
+            clientX: event.clientX, clientY: event.clientY,
+            position: state.move.positions.get(id) ?? { x: 0, y: 0 }
+          };
+          frame.classList.add('dragging-layer');
           state.anim.mode = 'static';
           state.anim.progress = 1;
           updateAnimStatusUI('MANUALE');
           syncTimelineUI();
           schedulePreview();
         });
-        frame.addEventListener('pointermove', event => {
-          if (event.pointerId === pointerId) extendStroke(event);
-        });
-        function finishStroke(event) {
-          if (event.pointerId !== pointerId) return;
-          if (event.type === 'pointerup') extendStroke(event, true);
-          pointerId = null;
-          flushStroke();
+
+        function move(event) {
+          if (event.pointerId !== drag?.pointerId) return;
+          const dx = (event.clientX - drag.clientX) / drag.rect.width;
+          const dy = (event.clientY - drag.clientY) / drag.rect.height;
+          if (!dx && !dy && !state.move.positions.has(drag.id)) return;
+          state.move.positions.set(drag.id, { x: drag.position.x + dx, y: drag.position.y + dy });
+          reset.disabled = !state.move.positions.has(select.value);
+          schedulePreview();
         }
-        frame.addEventListener('pointerup', finishStroke);
-        frame.addEventListener('pointercancel', finishStroke);
-        frame.addEventListener('lostpointercapture', finishStroke);
+
+        function finish(event) {
+          if (event.pointerId !== drag?.pointerId) return;
+          if (event.type === 'pointerup') move(event);
+          drag = null;
+          frame.classList.remove('dragging-layer');
+          if (pendingFrame) cancelAnimationFrame(pendingFrame);
+          pendingFrame = 0;
+          renderPositionedLayers();
+        }
+
+        frame.addEventListener('pointermove', move);
+        frame.addEventListener('pointerup', finish);
+        frame.addEventListener('pointercancel', finish);
+        frame.addEventListener('lostpointercapture', finish);
+      }
+
+      function updateMoveControls() {
+        const select = document.getElementById('moveEffect');
+        const previous = select.value;
+        select.replaceChildren(...state.effects.filter(effect => effect.active)
+          .map(effect => new Option(effect.name, effect.id)));
+        if (generatedLayers.has(previous)) select.value = previous;
+        select.disabled = !select.options.length;
+        document.getElementById('moveReset').disabled = !state.move.positions.has(select.value);
       }
 
       function updateStageHint() {
         const hint = document.getElementById('epicenterHint');
-        hint.textContent = state.brush.enabled ? 'Trascina sul foglio per disegnare'
+        hint.textContent = state.move.enabled ? 'Seleziona un parametro e trascina sul foglio'
           : state.zoneMode === 'epicenter' ? "Clicca sul foglio per spostare l'epicentro"
           : state.zoneMode === 'poster' ? 'Composizione poster'
           : '';
@@ -3051,17 +2936,16 @@
       }
 
       function applyPosterPreset() {
+        state.move.positions.clear();
         const values = new Map([['emissioni', 82], ['flora-fauna', 42], ['bollette', 49]]);
         for (const effect of state.effects) {
           effect.active = values.has(effect.id);
           if (effect.active) {
             effect.logic = effect.defaultLogic;
             effect.intensity = values.get(effect.id);
-            effect.distribution = DEFAULT_DISTRIBUTION;
           }
           if (usesHouseLayout(effect)) {
             effect.intensity = values.get('bollette');
-            effect.distribution = DEFAULT_DISTRIBUTION;
           }
         }
         state.typography.enabled = true;
@@ -3075,7 +2959,7 @@
 
 
       function bindEvents() {
-        bindBrushEvents();
+        bindMoveEvents();
         // Top randomize & mix
         document.getElementById('btnRandomizeTop').addEventListener('click', () => {
           rollRandomSeed();
@@ -3186,7 +3070,7 @@
         // Interactive Epicenter Click on Sheet
         let markerTimer = null;
         document.getElementById('sheetFrame').addEventListener('click', (e) => {
-          if (state.brush.enabled || state.zoneMode !== 'epicenter') return;
+          if (state.move.enabled || state.zoneMode !== 'epicenter') return;
           const rect = e.currentTarget.getBoundingClientRect();
           const nx = clamp((e.clientX - rect.left) / rect.width, 0.08, 0.92);
           const ny = clamp((e.clientY - rect.top) / rect.height, 0.08, 0.92);
