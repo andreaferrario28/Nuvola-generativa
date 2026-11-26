@@ -219,13 +219,6 @@
         banner: { width: 1280, height: 720,  label: '1280 × 720 px (16:9)' }
       };
 
-      const BACKGROUNDS = {
-        paper:       { hex: '#EDEEE9', ink: '#555555', subInk: '#555555' },
-        white:       { hex: '#FFFFFF', ink: '#161616', subInk: '#555550' },
-        dark:        { hex: '#555555', ink: '#EDEEE9', subInk: '#EDEEE9' },
-        transparent: { hex: null,      ink: '#161616', subInk: '#555550' }
-      };
-
       const ZONE_DESCRIPTIONS = {
         free:      'Ogni effetto parte da una zona scelta dal seed. La composizione si estende fino ai margini.',
         epicenter: 'Ancora pennacchi, calore e onde attorno all\'epicentro (clicca sul foglio per spostarlo).',
@@ -1836,14 +1829,10 @@
           delay = item.order * 0.7;
         }
 
-        // Variazione propria di ogni elemento, stabile da un fotogramma all'altro.
-        const vary = (k) => {
-          const v = Math.sin((item.glitchDelay ?? item.order ?? 0) * 12.9898 * k + k * 78.233) * 43758.5453;
-          return v - Math.floor(v);
-        };
-
-        const windowSize = style === 'plotter-glitch' ? 0.07 + vary(1) * 0.17 : 0.28;
-        const localT = clamp((globalProgress * (1 + windowSize) - delay) / windowSize, 0, 1);
+        const windowSize = 0.28;
+        const localT = style === 'plotter-glitch'
+          ? plotterGlitchProgress(globalProgress, delay)
+          : clamp((globalProgress * (1 + windowSize) - delay) / windowSize, 0, 1);
 
         if (localT <= 0) return { alpha: 0, scale: 0, dx: 0, dy: 0 };
 
@@ -2207,7 +2196,7 @@
         const ctx = targetCanvas.getContext('2d');
         ctx.clearRect(0, 0, W, H);
 
-        const bgInfo = BACKGROUNDS[state.background];
+        const bgInfo = STUDIO_BACKGROUNDS[state.background];
         if (bgInfo.hex) {
           ctx.fillStyle = bgInfo.hex;
           ctx.fillRect(0, 0, W, H);
@@ -2354,7 +2343,7 @@
 
       function buildSVGString() {
         const { width: W, height: H } = FORMATS[state.format];
-        const bgInfo = BACKGROUNDS[state.background];
+        const bgInfo = STUDIO_BACKGROUNDS[state.background];
         const r = n => Number(n.toFixed(2));
         const artwork = getTypographyArtwork(canvas.getContext('2d'), W, H, bgInfo);
         const clipAttribute = artwork.effectClip ? ' clip-path="url(#typography-clearance)"' : '';
