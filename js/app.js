@@ -1926,7 +1926,7 @@
           { left: logo.x, right: logo.x + logo.width, top: logo.y, bottom: logo.y + logo.height });
       }
 
-      function renderCanvas(progress, targetCanvas = canvas, pixelSize) {
+      function renderCanvas(progress, targetCanvas = canvas, pixelSize, background = state.background) {
         const { width: W, height: H } = FORMATS[state.format];
         const [pixelWidth, pixelHeight] = pixelSize ?? [W, H];
         if (targetCanvas.width !== pixelWidth || targetCanvas.height !== pixelHeight) {
@@ -1938,7 +1938,7 @@
         ctx.setTransform(pixelWidth / W, 0, 0, pixelHeight / H, 0, 0);
         ctx.clearRect(0, 0, W, H);
 
-        const bgInfo = STUDIO_BACKGROUNDS[state.background];
+        const bgInfo = STUDIO_BACKGROUNDS[background];
         if (bgInfo.hex) {
           ctx.fillStyle = bgInfo.hex;
           ctx.fillRect(0, 0, W, H);
@@ -2038,7 +2038,7 @@
             needsRender = true;
             if (state.anim.progress <= 0) {
               if (state.anim.isRecording) {
-                finishWebMRecording();
+                finishVideoRecording();
               } else {
                 state.anim.phase = 'pause';
                 state.anim.phaseTimer = 0;
@@ -2278,70 +2278,137 @@
         }
       }
 
-      // WebM Recorder
+      const alphaExporterUrl = new URL('video-export.js', document.currentScript.src).href;
       let mediaRecorder = null;
-      let recordedChunks = [];
+      let alphaExporter;
 
-      function startWebMRecording() {
-        if (state.anim.isRecording) return;
-        if (typeof MediaRecorder === 'undefined' || !canvas.captureStream) {
-          showToast('Registrazione WebM non supportata da questo browser');
+      function loadAlphaExporter() {
+        if (!alphaExporter) {
+          alphaExporter = new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = alphaExporterUrl;
+            script.onload = resolve;
+            script.onerror = () => {
+              script.remove();
+              reject(new Error('Esportazione MOV non disponibile'));
+            };
+            document.head.append(script);
+          }).catch(error => {
+            alphaExporter = undefined;
+            throw error;
+          });
+        }
+        return alphaExporter;
+      }
+
+      function showRecordingBadge(format) {
+        const badge = document.getElementById('recordingBadge');
+        badge.classList.toggle('hidden', !format);
+        badge.classList.toggle('inline-flex', Boolean(format));
+        if (format) badge.lastChild.textContent = ' REC ' + format + '…';
+      }
+
+      async function exportStudioAlpha() {
+        state.anim.isRecording = true;
+        state.anim.mode = 'static';
+        showRecordingBadge('MOV');
+        try {
+          await loadAlphaExporter();
+          const output = document.createElement('canvas');
+          const fps = 30;
+          const frames = [];
+          const speed = state.anim.speed;
+          const inFrames = Math.ceil(1.8 * fps / speed);
+          const holdFrames = Math.ceil(1.2 * fps / speed);
+          const outFrames = Math.ceil(1.5 * fps / speed);
+          const { width, height } = FORMATS[state.format];
+          for (let index = 0; index <= inFrames + holdFrames + outFrames; index++) {
+            const progress = Math.min(1, index / inFrames, 1 - (index - inFrames - holdFrames) / outFrames);
+            renderCanvas(progress, output, [width, height], 'transparent');
+            frames.push(await encodeCanvasPng(output));
+          }
+          downloadBlob(createAlphaMovie(frames, width, height, fps), 'the-clouded-issue-motion-alpha.mov');
+          showToast('Video MOV con trasparenza esportato');
+        } catch {
+          showToast('Impossibile creare il MOV con trasparenza');
+        } finally {
+          state.anim.isRecording = false;
+          showRecordingBadge();
+        }
+      }
+
+      function startVideoRecording(format) {
+        if (state.anim.isRecording || mediaRecorder) return;
+        if (state.background === 'transparent') {
+          exportStudioAlpha();
+          return;
+        }
+        const mimeType = getVideoRecordingType(format);
+        const label = format.toUpperCase();
+        if (!canvas.captureStream || !mimeType) {
+          showToast('Registrazione ' + label + ' non supportata da questo browser');
           return;
         }
 
+        let stream;
         try {
-          const stream = canvas.captureStream(60);
-          const mimeCandidates = [
-            'video/webm;codecs=vp9',
-            'video/webm;codecs=vp8',
-            'video/webm'
-          ];
-          const mimeType = mimeCandidates.find(m => MediaRecorder.isTypeSupported(m)) || '';
+          stream = canvas.captureStream(60);
+          const chunks = [];
+          const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 6000000 });
 
-          recordedChunks = [];
-          mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType, videoBitsPerSecond: 6000000 } : undefined);
-
-          mediaRecorder.ondataavailable = (e) => {
-            if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+          recorder.ondataavailable = event => {
+            if (event.data.size) chunks.push(event.data);
+          };
+          recorder.onerror = () => {
+            mediaRecorder = null;
+            stream.getTracks().forEach(track => track.stop());
+            resetVideoRecording();
+            showToast('Registrazione ' + label + ' interrotta');
+          };
+          recorder.onstop = () => {
+            stream.getTracks().forEach(track => track.stop());
+            if (mediaRecorder !== recorder) return;
+            mediaRecorder = null;
+            resetVideoRecording();
+            if (chunks.length) {
+              downloadBlob(new Blob(chunks, { type: recorder.mimeType || mimeType }), 'the-clouded-issue-motion.' + format);
+              showToast('Video ' + label + ' (IN → Sosta → OUT) esportato');
+            } else {
+              showToast('Registrazione ' + label + ' vuota');
+            }
           };
 
-          mediaRecorder.onstop = () => {
-            const blob = new Blob(recordedChunks, { type: mimeType || 'video/webm' });
-            downloadBlob(blob, `the-clouded-issue-motion.webm`);
-            showToast('Video WebM (IN → Sosta → OUT) esportato');
-          };
-
+          renderCanvas(0);
+          recorder.start();
+          mediaRecorder = recorder;
           state.anim.isRecording = true;
           state.anim.mode = 'loop';
           state.anim.phase = 'in';
           state.anim.progress = 0;
           state.anim.phaseTimer = 0;
-
-          document.getElementById('recordingBadge').classList.remove('hidden');
-          document.getElementById('recordingBadge').classList.add('inline-flex');
+          showRecordingBadge(label);
           updateAnimStatusUI('REC IN');
-          renderCanvas(0);
-
-          mediaRecorder.start();
-          showToast('Registrazione avviata: ciclo completo IN → OUT...');
-        } catch (err) {
-          state.anim.isRecording = false;
-          showToast('Impossibile avviare la registrazione video');
+          showToast('Registrazione ' + label + ' avviata');
+        } catch {
+          stream?.getTracks().forEach(track => track.stop());
+          showToast('Impossibile avviare la registrazione ' + label);
         }
       }
 
-      function finishWebMRecording() {
+      function finishVideoRecording() {
+        state.anim.mode = 'static';
+        renderCanvas(0);
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
+      }
+
+      function resetVideoRecording() {
         state.anim.isRecording = false;
         state.anim.mode = 'static';
         state.anim.progress = 1;
         renderCanvas(1);
         syncTimelineUI();
         updateAnimStatusUI('COMPLETO');
-        document.getElementById('recordingBadge').classList.add('hidden');
-        document.getElementById('recordingBadge').classList.remove('inline-flex');
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          mediaRecorder.stop();
-        }
+        showRecordingBadge();
       }
 
       /* ======================================================================
@@ -2937,7 +3004,24 @@
         // Export Buttons
         document.getElementById('btnExportSVG').addEventListener('click', exportSVG);
         document.getElementById('btnExportPNG').addEventListener('click', exportPNG);
-        document.getElementById('btnRecordWebM').addEventListener('click', startWebMRecording);
+        const webm = document.getElementById('btnRecordWebM');
+        const mp4 = webm.cloneNode(true);
+        mp4.id = 'btnRecordMp4';
+        mp4.lastElementChild.textContent = '.MP4';
+        webm.after(mp4);
+        webm.addEventListener('click', () => startVideoRecording('webm'));
+        mp4.addEventListener('click', () => startVideoRecording('mp4'));
+
+        function updateVideoExportFormats() {
+          const transparent = state.background === 'transparent';
+          webm.lastElementChild.textContent = transparent ? '.MOV' : '.WEBM';
+          mp4.classList.toggle('hidden', transparent);
+          mp4.classList.toggle('flex', !transparent);
+        }
+        for (const button of document.querySelectorAll('.bg-btn')) {
+          button.addEventListener('click', updateVideoExportFormats);
+        }
+        updateVideoExportFormats();
 
         // Mobile Tab Switching
         document.querySelectorAll('.mobile-tab-btn').forEach(btn => {

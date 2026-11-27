@@ -11,3 +11,11 @@ function plotterGlitchProgress(progress, delay) {
   const windowSize = 0.07 + (noise - Math.floor(noise)) * 0.17;
   return Math.max(0, Math.min(1, (progress * (1 + windowSize) - delay) / windowSize));
 }
+
+function getVideoRecordingType(format) {
+  if (typeof MediaRecorder === 'undefined') return undefined;
+  const types = format === 'mp4'
+    ? ['video/mp4;codecs=avc1', 'video/mp4']
+    : ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm'];
+  return types.find(type => MediaRecorder.isTypeSupported(type));
+}

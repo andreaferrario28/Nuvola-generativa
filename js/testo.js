@@ -66,7 +66,7 @@
   const ctx = canvas.getContext('2d');
   const dimensions = $('dimensions');
   const status = $('status');
-  const playbackControls = [$('play'), $('download'), $('download-alpha')];
+  const playbackControls = [$('play'), $('download'), $('download-mp4'), $('download-alpha')];
   const mode = $('mode');
   const plateColor = $('plate-color');
   const textColor = $('text-color');
@@ -623,20 +623,17 @@
     return 'clouded-issue-' + (layout.usePlate ? 'sottopancia-' : 'commento-') + $('format').value;
   }
 
-  function exportVideo() {
-    if (!canvas.captureStream || typeof MediaRecorder === 'undefined') {
-      status.textContent = 'L’esportazione video non è disponibile in questo browser.';
+  function exportVideo(format) {
+    const mimeType = getVideoRecordingType(format);
+    if (!canvas.captureStream || !mimeType) {
+      status.textContent = 'Esportazione ' + format.toUpperCase() + ' non disponibile in questo browser.';
       return;
     }
 
-    const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/mp4', 'video/webm']
-      .find(type => MediaRecorder.isTypeSupported(type));
     let stream;
     try {
       stream = canvas.captureStream(30);
-      const options = { videoBitsPerSecond: 8000000 };
-      if (mimeType) options.mimeType = mimeType;
-      const recorder = new MediaRecorder(stream, options);
+      const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8000000 });
       const chunks = [];
       let failed = false;
       recorder.ondataavailable = event => {
@@ -656,11 +653,11 @@
           return;
         }
 
-        const type = recorder.mimeType || mimeType || chunks[0].type;
+        const type = recorder.mimeType || mimeType;
         const url = URL.createObjectURL(new Blob(chunks, { type }));
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${exportName()}.${type.includes('mp4') ? 'mp4' : 'webm'}`;
+        link.download = `${exportName()}.${format}`;
         link.click();
         setTimeout(() => URL.revokeObjectURL(url), 1000);
         status.textContent = 'Video esportato.';
@@ -783,7 +780,8 @@
     });
     $('speed').addEventListener('change', play);
     $('play').addEventListener('click', play);
-    $('download').addEventListener('click', exportVideo);
+    $('download').addEventListener('click', () => exportVideo('webm'));
+    $('download-mp4').addEventListener('click', () => exportVideo('mp4'));
     $('download-alpha').addEventListener('click', exportAlphaVideo);
     split.addEventListener('click', splitPassage);
     loadComment();

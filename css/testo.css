@@ -76,7 +76,7 @@
 .text-output { min-width: 0; }
 .text-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 .text-actions button { width: auto; margin: 0; cursor: pointer; border-color: var(--ink); }
-.text-actions #download, .text-actions #download-alpha { color: white; background: var(--ink); }
+.text-actions #download, .text-actions #download-mp4, .text-actions #download-alpha { color: white; background: var(--ink); }
 .text-actions button:disabled { opacity: .45; cursor: default; }
 
 .text-screen {
