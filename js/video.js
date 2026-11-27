@@ -27,8 +27,9 @@
   const play = $('video-play');
   const download = $('video-download');
   const downloadMp4 = $('video-download-mp4');
+  const downloadMp4Black = $('video-download-mp4-black');
   const status = $('video-status');
-  const controls = [format, speed, size, source, downloadMp4];
+  const controls = [format, speed, size, source, downloadMp4, downloadMp4Black];
   const fps = 30;
   const blackoutStart = .88;
   const darkeningStart = .73;
@@ -223,11 +224,11 @@
     }
   }
 
-  function drawComposite(composite, progress) {
+  function drawComposite(composite, progress, blackBackground) {
     const { width, height } = canvas;
-    composite.fillStyle = STUDIO_BACKGROUNDS.white.hex;
+    composite.fillStyle = blackBackground ? '#000' : STUDIO_BACKGROUNDS.white.hex;
     composite.fillRect(0, 0, width, height);
-    if (!underlay.hidden && underlay.readyState >= 2) {
+    if (!blackBackground && !underlay.hidden && underlay.readyState >= 2) {
       const scale = Math.max(width / underlay.videoWidth, height / underlay.videoHeight);
       const videoWidth = underlay.videoWidth * scale;
       const videoHeight = underlay.videoHeight * scale;
@@ -237,7 +238,7 @@
     composite.drawImage(canvas, 0, 0);
   }
 
-  async function exportMp4() {
+  async function exportMp4(blackBackground) {
     const mimeType = getVideoRecordingType('mp4');
     const output = document.createElement('canvas');
     if (!output.captureStream || !mimeType) {
@@ -255,11 +256,11 @@
       output.height = canvas.height;
       const composite = output.getContext('2d', { alpha: false });
       const duration = Number(speed.value) * 1000;
-      if (!underlay.hidden) {
+      if (!blackBackground && !underlay.hidden) {
         underlay.currentTime = 0;
         await underlay.play();
       }
-      drawComposite(composite, 0);
+      drawComposite(composite, 0, blackBackground);
 
       stream = output.captureStream(fps);
       const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8000000 });
@@ -277,7 +278,7 @@
         const start = performance.now();
         function frame(now) {
           const progress = Math.min(1, (now - start) / duration);
-          drawComposite(composite, progress);
+          drawComposite(composite, progress, blackBackground);
           if (progress < 1) animation = requestAnimationFrame(frame);
           else recorder.stop();
         }
@@ -287,7 +288,8 @@
       const url = URL.createObjectURL(movie);
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'clouded-issue-disturbo-' + format.value + '.mp4';
+      const suffix = blackBackground ? '-sfondo-nero' : '';
+      link.download = 'clouded-issue-disturbo-' + format.value + suffix + '.mp4';
       link.click();
       setTimeout(() => URL.revokeObjectURL(url), 1500);
       status.textContent = 'MP4 esportato.';
@@ -369,7 +371,8 @@
     });
     play.addEventListener('click', preview);
     download.addEventListener('click', exportVideo);
-    downloadMp4.addEventListener('click', exportMp4);
+    downloadMp4.addEventListener('click', () => exportMp4(false));
+    downloadMp4Black.addEventListener('click', () => exportMp4(true));
 
     buildPattern();
     updateControls(false);
