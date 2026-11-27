@@ -111,7 +111,9 @@
 .text-controls .word-settings { margin-top: 1rem; }
 .word-settings button { width: auto; font: .75rem var(--font-mono); cursor: pointer; }
 .word-settings button:disabled { opacity: .45; cursor: default; }
-#markedWords { display: flex; flex-wrap: wrap; gap: 0 .4rem; }
+#markedWords { display: flex; flex-direction: column; }
+.marked-word { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 .5rem; }
+.marked-word select { width: auto; max-width: 100%; }
 #wordFeedback:empty { display: none; }
 
 .text-controls .type-settings { margin-bottom: 1.25rem; }

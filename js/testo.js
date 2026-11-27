@@ -26,6 +26,24 @@
   const wordGlitchDuration = 2400;
   const wordGlitchStepDuration = 50;
   const wordGlitchPattern = [true, false, true, true, false, true, false, false, true, true, true, false, true];
+  const defaultGlitchStyle = 'Level02';
+  const glitchStyles = {
+    Level01: 'Level 01',
+    Level02: 'Level 02',
+    Level03: 'Level 03',
+    LevelAir: 'Level Air',
+    'Level-01': 'Level -01',
+    'Level-02': 'Level -02',
+    Light: 'Light',
+    LightItalic: 'Light Italic',
+    Regular: 'Regular',
+    Italic: 'Italic',
+    Medium: 'Medium',
+    MediumItalic: 'Medium Italic',
+    Bold: 'Bold',
+    BoldItalic: 'Bold Italic'
+  };
+  const glitchFonts = new Map();
   const lowerThirdHold = 3000;
   const house = new Path2D('M2 3h6v2h6v7h-4v2H2z');
   const cursorParticles = [
@@ -54,9 +72,10 @@
   const textColor = $('text-color');
   const resetTextColor = $('reset-text-color');
   const background = $('background');
+  const backgroundColor = $('background-color');
   const fontSize = $('font-size');
   const lineBreaks = $('line-breaks');
-  const settings = [comment, mode, plateColor, textColor, $('format'), $('speed'), background, fontSize, lineBreaks];
+  const settings = [comment, mode, plateColor, textColor, $('format'), $('speed'), background, backgroundColor, fontSize, lineBreaks];
   const split = $('split');
   const markWords = $('markWords');
   const markedWordsList = $('markedWords');
@@ -132,10 +151,28 @@
     }
   }
 
+  function glitchFontFamily(style) {
+    return style === defaultGlitchStyle ? 'Eiffel Level 02' : `Eiffel Glitch ${style}`;
+  }
+
+  async function loadGlitchFont(style) {
+    if (style === defaultGlitchStyle) return;
+    if (!glitchFonts.has(style)) {
+      const face = new FontFace(glitchFontFamily(style), `url("Assets/fonts/BVHEiffelTrial-${style}.otf")`);
+      glitchFonts.set(style, face.load().then(loaded => document.fonts.add(loaded)).catch(error => {
+        glitchFonts.delete(style);
+        throw error;
+      }));
+    }
+    await glitchFonts.get(style);
+  }
+
   function updateMarkedWords() {
     markedWordsList.replaceChildren();
     const ordered = [...markedWords.values()].sort((a, b) => a.index - b.index);
     for (const word of ordered) {
+      const row = document.createElement('div');
+      row.className = 'marked-word';
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = word.segment + ' ×';
@@ -146,7 +183,34 @@
         markWords.focus();
         play();
       });
-      markedWordsList.append(button);
+      const select = document.createElement('select');
+      select.setAttribute('aria-label', 'Stile del glitch per ' + word.segment);
+      for (const [style, label] of Object.entries(glitchStyles)) select.add(new Option(label, style));
+      select.value = word.pendingStyle ?? word.style;
+      select.addEventListener('change', async () => {
+        const style = select.value;
+        word.pendingStyle = style;
+        wordFeedback.textContent = '';
+        setControls();
+        try {
+          await loadGlitchFont(style);
+        } catch {
+          if (markedWords.get(word.index) !== word || word.pendingStyle !== style) return;
+          delete word.pendingStyle;
+          if (select.isConnected) select.value = word.style;
+          else updateMarkedWords();
+          wordFeedback.textContent = 'Impossibile caricare lo stile ' + glitchStyles[style] + '.';
+          setControls();
+          return;
+        }
+        if (markedWords.get(word.index) !== word || word.pendingStyle !== style) return;
+        delete word.pendingStyle;
+        word.style = style;
+        setControls();
+        play();
+      });
+      row.append(button, select);
+      markedWordsList.append(row);
     }
   }
 
@@ -162,7 +226,7 @@
     const remove = words.every(word => markedWords.has(word.index));
     for (const word of words) {
       if (remove) markedWords.delete(word.index);
-      else markedWords.set(word.index, word);
+      else if (!markedWords.has(word.index)) markedWords.set(word.index, { ...word, style: defaultGlitchStyle });
     }
     wordFeedback.textContent = '';
     updateMarkedWords();
@@ -363,7 +427,7 @@
       ctx.fillText(text.slice(offset, left), runX, y);
 
       if (wordWidth > 0 && wordsVisible) {
-        ctx.font = size + 'px "Eiffel Level 02"';
+        ctx.font = `${size}px "${glitchFontFamily(word.style)}"`;
         ctx.fillText(text.slice(left, right), wordX, y, wordWidth);
         ctx.font = font;
       }
@@ -387,15 +451,16 @@
   }
 
   function automaticInk(usePlate) {
-    return usePlate ? contrastingInk(plateColor.value) : STUDIO_BACKGROUNDS[background.value].ink;
+    if (usePlate) return contrastingInk(plateColor.value);
+    if (background.value === 'custom') return contrastingInk(backgroundColor.value);
+    return STUDIO_BACKGROUNDS[background.value].ink;
   }
 
   function render(count, visible = cursorIndices, glitchElapsed, words = [], transparent = false, neutralIds = neutralEffectIds, erasing = false) {
-    const colors = STUDIO_BACKGROUNDS[background.value];
     if (transparent) {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     } else {
-      ctx.fillStyle = colors.hex;
+      ctx.fillStyle = background.value === 'custom' ? backgroundColor.value : STUDIO_BACKGROUNDS[background.value].hex;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
     if (!layout || !runs.length) return;
@@ -458,12 +523,14 @@
   }
 
   function setControls() {
-    for (const control of playbackControls) control.disabled = !ready || recording || !layout || !runs.length;
+    const loadingGlitchFont = [...markedWords.values()].some(word => word.pendingStyle);
+    for (const control of playbackControls) control.disabled = !ready || recording || loadingGlitchFont || !layout || !runs.length;
     split.disabled = !ready || recording || !runs.length;
     markWords.disabled = !ready || recording;
     resetTextColor.disabled = recording || !customTextColor;
-    for (const button of markedWordsList.querySelectorAll('button')) button.disabled = recording;
-    for (const control of [...settings, ...$('effects').querySelectorAll('select')]) control.disabled = recording;
+    for (const control of [...settings, ...$('effects').querySelectorAll('select'), ...markedWordsList.querySelectorAll('button, select')]) {
+      control.disabled = recording;
+    }
   }
 
   function createAnimation(transparent = false) {
@@ -475,7 +542,7 @@
     let count = 0;
     let nextCharacter = 350 + speed;
     let typingEnd;
-    const words = [...markedWords.values()].sort((a, b) => a.index - b.index);
+    const words = [...markedWords.values()].map(word => ({ ...word })).sort((a, b) => a.index - b.index);
     const hold = usePlate ? lowerThirdHold : words.length ? wordGlitchDuration : 1500;
     const advanceCursor = createCursorSequence();
     const neutralMix = createNeutralMix();
@@ -538,6 +605,7 @@
   function refresh() {
     cancelAnimationFrame(animation);
     $('plate-color-field').hidden = mode.value !== 'lower-third';
+    $('background-color-field').hidden = background.value !== 'custom';
     syncTextColor();
     buildLayout();
     setControls();
@@ -708,6 +776,11 @@
     });
     lineBreaks.addEventListener('change', refresh);
     background.addEventListener('change', refresh);
+    backgroundColor.addEventListener('change', () => {
+      syncTextColor();
+      if (layout && runs.length) play();
+      else render(0);
+    });
     $('speed').addEventListener('change', play);
     $('play').addEventListener('click', play);
     $('download').addEventListener('click', exportVideo);
